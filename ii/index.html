@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Azim Pial | Portfolio</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+
+  <!-- AOS Animation Library -->
+  <link href="https://unpkg.com/aos@2.3.4/dist/aos.css" rel="stylesheet">
+  <script src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      AOS.init({
+        duration: 1000, // animation duration in ms
+        once: true,     // animate only once
+        easing: 'ease-in-out'
+      });
+    });
+  </script>
+
+  <style>
+    body { 
+      font-family: 'Inter', sans-serif; 
+      background-color: #0a0a0a; 
+      color: #fff; 
+    }
+    h1, h2, h3 { font-family: 'Playfair Display', serif; }
+  </style>
+</head>
+
+<body class="text-white">
+
+  <!-- Header Section -->
+  <section class="text-center py-12" data-aos="fade-up">
+    <h1 class="text-6xl font-bold mb-8 tracking-wide">PORTFOLIO</h1>
+    <div class="flex flex-col items-center space-y-4">
+      <img src="image/pic1.jpg" alt="Azim Pial" class="rounded-full w-40 h-40 object-cover border-4 border-gray-700">
+      <div class="max-w-md text-center">
+        <h2 class="text-2xl font-semibold">Azim Pial</h2>
+        <p class="text-gray-400 text-sm mt-1">3rd Year CSE Student</p>
+        <p class="text-gray-500 mt-3 text-sm leading-relaxed">
+          Motivated 3rd-year Computer Science & Engineering student seeking opportunities to apply academic knowledge, develop practical skills, and contribute to innovative tech solutions. Aspiring to build impactful tech startups in the future.
+        </p>
+      </div>
+      <div class="flex space-x-4 mt-4" data-aos="zoom-in" data-aos-delay="200">
+        <a class="border border-gray-500 px-3 py-1 rounded hover:bg-gray-700" href="https://github.com/AzimPial">GitHub</a>
+        <a class="border border-gray-500 px-3 py-1 rounded hover:bg-gray-700" href="https://www.linkedin.com/in/azim-pial-b771ba397/">LinkedIn</a>
+        <a class="border border-gray-500 px-3 py-1 rounded hover:bg-gray-700" href="https://www.facebook.com/azim.piyal/">Facebook</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tech Stack -->
+  <section class="text-center mt-8" data-aos="fade-up" data-aos-delay="200">
+    <h3 class="text-gray-300 uppercase tracking-widest text-xs">Tech Stack</h3>
+    <div class="flex justify-center flex-wrap gap-2 mt-3">
+      <span class="border border-gray-600 px-2 py-1 rounded text-sm">C++</span>
+      <span class="border border-gray-600 px-2 py-1 rounded text-sm">Python</span>
+      <span class="border border-gray-600 px-2 py-1 rounded text-sm">Java</span>
+      <span class="border border-gray-600 px-2 py-1 rounded text-sm">HTML/CSS</span>
+      <span class="border border-gray-600 px-2 py-1 rounded text-sm">App Development (Learning)</span>
+      <span class="border border-gray-600 px-2 py-1 rounded text-sm">VS Code</span>
+      <span class="border border-gray-600 px-2 py-1 rounded text-sm">Git</span>
+      <span class="border border-gray-600 px-2 py-1 rounded text-sm">Codeforces</span>
+      <span class="border border-gray-600 px-2 py-1 rounded text-sm">Firebase</span>
+      <span class="border border-gray-600 px-2 py-1 rounded text-sm">AI Tools</span>
+    </div>
+  </section>
+
+  <!-- ====== CORE STRENGTHS SECTION ====== -->
+  <section class="text-center mt-12" data-aos="fade-up" data-aos-delay="300">
+    <h3 class="text-gray-400 uppercase tracking-[0.25em] text-xs mb-4">CORE STRENGTHS</h3>
+    <div class="flex flex-wrap justify-center gap-3">
+      <span class="border border-gray-500 px-4 py-1.5 rounded-md text-sm text-gray-200 hover:bg-gray-800 transition duration-300">Problem Solving</span>
+      <span class="border border-gray-500 px-4 py-1.5 rounded-md text-sm text-gray-200 hover:bg-gray-800 transition duration-300">Teamwork</span>
+      <span class="border border-gray-500 px-4 py-1.5 rounded-md text-sm text-gray-200 hover:bg-gray-800 transition duration-300">Communication</span>
+      <span class="border border-gray-500 px-4 py-1.5 rounded-md text-sm text-gray-200 hover:bg-gray-800 transition duration-300">Fast Learner</span>
+    </div>
+  </section>
+
+  <!-- Featured Projects -->
+  <section class="mt-20 text-center" data-aos="zoom-in-up">
+    <h2 class="text-4xl font-bold mb-10 tracking-wide">FEATURED PROJECTS</h2>
+    <div class="grid md:grid-cols-2 gap-6 px-6 md:px-20">
+      <div class="relative group" data-aos="zoom-in" data-aos-delay="100">
+        <img src="image/management.png" class="rounded-lg opacity-80 group-hover:opacity-100 transition" alt="Management Platform">
+        <p class="absolute bottom-4 left-4 text-white font-semibold">Management Platforms</p>
+      </div>
+      <div class="relative group" data-aos="zoom-in" data-aos-delay="200">
+        <img src="image/snake.png" class="rounded-lg opacity-80 group-hover:opacity-100 transition" alt="Snake Game">
+        <p class="absolute bottom-4 left-4 text-white font-semibold">Snake Game</p>
+      </div>
+      <div class="relative group" data-aos="zoom-in" data-aos-delay="300">
+        <img src="image/fitness.png" class="rounded-lg opacity-80 group-hover:opacity-100 transition" alt="Mobile Fitness App">
+        <p class="absolute bottom-4 left-4 text-white font-semibold">Mobile Fitness App</p>
+      </div>
+      <div class="relative group" data-aos="zoom-in" data-aos-delay="400">
+        <img src="image/battleship.png" class="rounded-lg opacity-80 group-hover:opacity-100 transition" alt="Battleship Game">
+        <p class="absolute bottom-4 left-4 text-white font-semibold">Battleship Game</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- About Section -->
+  <section class="mt-20 px-6 md:px-20 text-center" data-aos="fade-right">
+    <h2 class="text-4xl font-bold mb-8">ABOUT</h2>
+    <div class="max-w-4xl mx-auto text-gray-400 leading-relaxed">
+      <p>
+        Motivated and growth-driven Computer Science student with strong problem-solving skills and hands-on experience in software tools, AI technologies, and competitive programming. Passionate about building digital solutions to real-world challenges in Bangladesh. Skilled in teamwork, communication, and adapting to new technologies. Currently enhancing expertise in full-stack development, cloud platforms, and AI-assisted workflows.
+      </p>
+    </div>
+  </section>
+
+  <!-- Quote -->
+  <section class="text-center mt-16 italic text-gray-400" data-aos="fade-left">
+    <p>“Design is not just what it looks like and feels like. Design is how it works.”</p>
+    <p class="text-sm mt-1">– Steve Jobs</p>
+  </section>
+
+  <!-- Fullscreen THANKS FOR VISITING Section -->
+<footer class="h-screen flex flex-col items-center justify-center text-center bg-black border-t border-gray-800" data-aos="fade-up">
+  <h2 class="text-7xl md:text-8xl font-bold mb-8 tracking-wide">THANKS FOR<br>VISITING</h2>
+
+  <div class="flex justify-center space-x-6 mt-4">
+    <a class="border border-gray-500 px-5 py-2 rounded hover:bg-gray-800 transition duration-300" href="">Resume</a>
+    <a class="border border-gray-500 px-5 py-2 rounded hover:bg-gray-800 transition duration-300" href="https://github.com/AzimPial">GitHub</a>
+    <a class="border border-gray-500 px-5 py-2 rounded hover:bg-gray-800 transition duration-300" href="https://www.linkedin.com/in/azim-pial-b771ba397/">LinkedIn</a>
+  </div>
+
+  <p class="text-gray-500 text-sm mt-10 tracking-wide">
+    Crafted with <span class="text-red-500">♥</span> & precision © 2025
+  </p>
+</footer>
+
+
+</body>
+</html>
