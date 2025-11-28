@@ -43,7 +43,9 @@ import {
     MoreVertical,
     Trash2,
     Users,
-    Plus
+    Plus,
+    Edit2,
+    UserMinus
 } from 'lucide-react';
 
 const Input = ({ value, onChange, placeholder, type = "text", className = "" }) => (
@@ -450,12 +452,117 @@ function CreateGroupModal({ user, friends, onClose }) {
     );
 }
 
+function GroupInfoModal({ group, user, onClose, onLeave }) {
+    const [members, setMembers] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchMembers = async () => {
+            try {
+                const memberProfiles = await Promise.all(
+                    group.members.map(async (uid) => {
+                        const userDoc = await getDoc(doc(db, 'users', uid));
+                        return { uid, ...userDoc.data() };
+                    })
+                );
+                setMembers(memberProfiles);
+            } catch (err) {
+                console.error("Error fetching members:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchMembers();
+    }, [group]);
+
+    const handleLeaveGroup = async () => {
+        if (!window.confirm('Are you sure you want to leave this group?')) return;
+        try {
+            const updatedMembers = group.members.filter(uid => uid !== user.uid);
+            await updateDoc(doc(db, 'groups', group.id), {
+                members: updatedMembers
+            });
+            onLeave();
+        } catch (err) {
+            console.error("Error leaving group:", err);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+            <div className="bg-gray-900 w-full max-w-md rounded-2xl border border-gray-800 flex flex-col max-h-[80vh]">
+                <div className="p-4 border-b border-gray-800 flex items-center justify-between">
+                    <h2 className="text-xl font-bold text-white">Group Info</h2>
+                    <button onClick={onClose} className="text-gray-400 hover:text-white">
+                        <X size={24} />
+                    </button>
+                </div>
+
+                <div className="p-4 space-y-4 flex-1 overflow-y-auto">
+                    <div className="flex flex-col items-center gap-3 pb-4 border-b border-gray-800">
+                        <div className="w-20 h-20 rounded-full bg-gray-800 flex items-center justify-center">
+                            <Users size={32} className="text-gray-400" />
+                        </div>
+                        <div className="text-center">
+                            <h3 className="text-xl font-bold text-white">{group.name}</h3>
+                            <p className="text-sm text-gray-500">{group.members?.length || 0} members</p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 className="text-sm font-medium text-gray-400 mb-3">Members</h4>
+                        {loading ? (
+                            <div className="flex justify-center py-4">
+                                <Loader2 className="w-6 h-6 animate-spin text-gray-500" />
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                {members.map(member => (
+                                    <div key={member.uid} className="flex items-center gap-3 p-3 bg-gray-800 rounded-xl">
+                                        <div className="w-10 h-10 rounded-full bg-gray-700 overflow-hidden">
+                                            {member.photoURL ? (
+                                                <img src={member.photoURL} alt={member.displayName} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-gray-400 font-semibold">
+                                                    {member.displayName?.[0]?.toUpperCase() || 'U'}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="text-white font-medium">{member.displayName || 'Unknown User'}</p>
+                                            {member.uid === group.createdBy && (
+                                                <p className="text-xs text-blue-400">Admin</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                <div className="p-4 border-t border-gray-800">
+                    <button
+                        onClick={handleLeaveGroup}
+                        className="w-full px-4 py-3 bg-red-600/20 hover:bg-red-600/30 border border-red-600 rounded-xl text-red-400 font-medium flex items-center justify-center gap-2 transition-colors"
+                    >
+                        <UserMinus size={18} />
+                        Leave Group
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 function ConversationsList({ friends, user, profile, onSelectFriend, onOpenProfile, onLogout }) {
     const [searchQuery, setSearchQuery] = useState('');
     const [friendProfiles, setFriendProfiles] = useState({});
     const [showAddFriend, setShowAddFriend] = useState(false);
     const [showCreateGroup, setShowCreateGroup] = useState(false);
     const [groups, setGroups] = useState([]);
+    const [editingName, setEditingName] = useState(false);
+    const [newDisplayName, setNewDisplayName] = useState(profile?.displayName || '');
 
     const [chatsData, setChatsData] = useState({});
 
@@ -548,16 +655,65 @@ function ConversationsList({ friends, user, profile, onSelectFriend, onOpenProfi
             <div className="px-4 py-4 border-b border-gray-800">
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
-                        <div onClick={onOpenProfile} className="w-10 h-10 rounded-full bg-gray-800 overflow-hidden cursor-pointer border border-gray-700">
+                        <div className="w-12 h-12 rounded-full bg-gray-800 overflow-hidden cursor-pointer" onClick={onOpenProfile}>
                             {profile?.photoURL ? (
-                                <img src={profile.photoURL} alt="Me" className="w-full h-full object-cover" />
+                                <img src={profile.photoURL} alt={profile.displayName} className="w-full h-full object-cover" />
                             ) : (
-                                <div className="w-full h-full flex items-center justify-center text-gray-400">
-                                    <User size={20} />
+                                <div className="w-full h-full flex items-center justify-center text-gray-400 font-semibold text-lg">
+                                    {profile?.displayName?.[0]?.toUpperCase() || 'U'}
                                 </div>
                             )}
                         </div>
-                        <h1 className="text-2xl font-bold text-white">Chats</h1>
+                        <div className="flex-1">
+                            {editingName ? (
+                                <div className="flex items-center gap-2">
+                                    <Input
+                                        value={newDisplayName}
+                                        onChange={(e) => setNewDisplayName(e.target.value)}
+                                        className="text-sm"
+                                        placeholder="Enter name"
+                                    />
+                                    <button
+                                        onClick={async () => {
+                                            if (newDisplayName.trim()) {
+                                                try {
+                                                    await updateDoc(doc(db, 'users', user.uid), {
+                                                        displayName: newDisplayName.trim()
+                                                    });
+                                                    setEditingName(false);
+                                                } catch (err) {
+                                                    console.error("Error updating name:", err);
+                                                }
+                                            }
+                                        }}
+                                        className="px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded text-white text-xs"
+                                    >
+                                        Save
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setEditingName(false);
+                                            setNewDisplayName(profile?.displayName || '');
+                                        }}
+                                        className="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-white text-xs"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-2">
+                                    <h2 className="text-xl font-bold text-white">{profile?.displayName || 'User'}</h2>
+                                    <button
+                                        onClick={() => setEditingName(true)}
+                                        className="p-1 text-gray-400 hover:text-white transition-colors"
+                                        title="Edit Name"
+                                    >
+                                        <Edit2 size={16} />
+                                    </button>
+                                </div>
+                            )}
+                            <p className="text-sm text-gray-500">Your chats</p>
+                        </div>
                     </div>
                     <div className="flex gap-2">
                         <button
@@ -658,7 +814,7 @@ function ConversationsList({ friends, user, profile, onSelectFriend, onOpenProfi
                     })
                 )}
             </div>
-        </div>
+        </div >
     );
 }
 
@@ -855,6 +1011,7 @@ function ChatView({ user, friend, onBack }) {
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const [uploading, setUploading] = useState(false);
+    const [showGroupInfo, setShowGroupInfo] = useState(false);
     const [fullScreenImage, setFullScreenImage] = useState(null);
     const messagesEndRef = useRef(null);
     const imageInputRef = useRef(null);
@@ -962,6 +1119,18 @@ function ChatView({ user, friend, onBack }) {
                 </div>
             )}
 
+            {showGroupInfo && isGroup && (
+                <GroupInfoModal
+                    group={friend}
+                    user={user}
+                    onClose={() => setShowGroupInfo(false)}
+                    onLeave={() => {
+                        setShowGroupInfo(false);
+                        onBack();
+                    }}
+                />
+            )}
+
             <div className="sticky top-0 z-10 px-4 py-3 border-b border-gray-800 bg-[#1a1a1a] flex items-center justify-between shadow-lg">
                 <div className="flex items-center gap-3">
                     <button
@@ -970,7 +1139,10 @@ function ChatView({ user, friend, onBack }) {
                     >
                         <ChevronLeft size={24} />
                     </button>
-                    <div className="w-10 h-10 rounded-full bg-gray-800 overflow-hidden">
+                    <div
+                        className="w-10 h-10 rounded-full bg-gray-800 overflow-hidden cursor-pointer"
+                        onClick={() => isGroup && setShowGroupInfo(true)}
+                    >
                         {friend.photoURL ? (
                             <img src={friend.photoURL} alt={friend.displayName} className="w-full h-full object-cover" />
                         ) : (
@@ -979,7 +1151,10 @@ function ChatView({ user, friend, onBack }) {
                             </div>
                         )}
                     </div>
-                    <div>
+                    <div
+                        className="cursor-pointer"
+                        onClick={() => isGroup && setShowGroupInfo(true)}
+                    >
                         <h3 className="font-semibold text-white">{friend.displayName || friend.name || 'Unknown'}</h3>
                         <p className="text-xs text-gray-500">{isGroup ? `${friend.members?.length || 0} members` : 'Active now'}</p>
                     </div>
