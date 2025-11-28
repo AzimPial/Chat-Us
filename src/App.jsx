@@ -137,7 +137,7 @@ export default function App() {
     }
 
     if (view === 'profile') {
-        return <ProfileSetup user={user} profile={profile} onSave={() => setView('conversations')} />;
+        return <ProfileSetup user={user} profile={profile} onSave={() => setView('conversations')} onBack={() => setView('conversations')} />;
     }
 
     return (
@@ -260,7 +260,7 @@ function Auth() {
     );
 }
 
-function ProfileSetup({ user, profile, onSave }) {
+function ProfileSetup({ user, profile, onSave, onBack }) {
     const [name, setName] = useState(profile?.displayName || '');
     const [image, setImage] = useState(null);
     const [preview, setPreview] = useState(profile?.photoURL || null);
@@ -305,6 +305,15 @@ function ProfileSetup({ user, profile, onSave }) {
     return (
         <div className="min-h-screen bg-black flex items-center justify-center p-4">
             <div className="w-full max-w-md space-y-6">
+                {onBack && profile?.displayName && (
+                    <button
+                        onClick={onBack}
+                        className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+                    >
+                        <ChevronLeft size={20} />
+                        Back
+                    </button>
+                )}
                 <div className="text-center">
                     <h1 className="text-3xl font-bold text-white mb-2">Profile Setup</h1>
                     <p className="text-gray-400">Customize your profile</p>
