@@ -18,7 +18,9 @@ import {
     serverTimestamp,
     deleteDoc,
     query,
-    updateDoc
+    updateDoc,
+    limit,
+    where
 } from 'firebase/firestore';
 import {
     ref,
@@ -55,8 +57,8 @@ const Button = ({ children, onClick, disabled, variant = "primary", className = 
         onClick={onClick}
         disabled={disabled}
         className={`w-full font-medium py-3 rounded-xl transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${variant === "primary"
-                ? "bg-blue-600 hover:bg-blue-700 text-white"
-                : "bg-gray-800 hover:bg-gray-700 text-white"
+            ? "bg-blue-600 hover:bg-blue-700 text-white"
+            : "bg-gray-800 hover:bg-gray-700 text-white"
             } ${className}`}
     >
         {children}
@@ -352,6 +354,36 @@ function ConversationsList({ friends, user, profile, onSelectFriend, onOpenProfi
     const [friendProfiles, setFriendProfiles] = useState({});
     const [showAddFriend, setShowAddFriend] = useState(false);
 
+    const [chatsData, setChatsData] = useState({});
+
+    useEffect(() => {
+        if (!user || !friends.length) return;
+
+        const unsubscribes = friends.map(friend => {
+            const chatId = [user.uid, friend.uid].sort().join('_');
+            const q = query(
+                collection(db, 'chats', chatId, 'messages'),
+                orderBy('timestamp', 'desc'),
+                limit(20)
+            );
+
+            return onSnapshot(q, (snapshot) => {
+                const messages = snapshot.docs.map(doc => doc.data());
+                const lastMsg = messages[0];
+                const unreadCount = messages.filter(m => !m.seen && m.senderId === friend.uid).length;
+
+                setChatsData(prev => ({
+                    ...prev,
+                    [friend.uid]: {
+                        lastMessage: lastMsg,
+                        unreadCount: unreadCount
+                    }
+                }));
+            });
+        });
+        return () => unsubscribes.forEach(unsub => unsub());
+    }, [friends, user]);
+
     useEffect(() => {
         const unsubscribes = friends.map(friend => {
             const friendDocRef = doc(db, 'users', friend.uid);
@@ -461,9 +493,30 @@ function ConversationsList({ friends, user, profile, onSelectFriend, onOpenProfi
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between mb-0.5">
                                     <h3 className="font-semibold text-white truncate">{friend.displayName || 'Unknown User'}</h3>
-                                    <span className="text-xs text-gray-500">Now</span>
+                                    {chatsData[friend.uid]?.lastMessage?.timestamp && (
+                                        <span className={`text-xs ${chatsData[friend.uid]?.unreadCount > 0 ? 'text-blue-500 font-bold' : 'text-gray-500'}`}>
+                                            {new Date(chatsData[friend.uid].lastMessage.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                    )}
                                 </div>
-                                <p className="text-sm text-gray-500 truncate">Tap to chat</p>
+                                <div className="flex items-center justify-between">
+                                    <p className={`text-sm truncate pr-2 ${chatsData[friend.uid]?.unreadCount > 0 ? 'text-white font-bold' : 'text-gray-500'}`}>
+                                        {chatsData[friend.uid]?.lastMessage ? (
+                                            chatsData[friend.uid].lastMessage.type === 'image' ? (
+                                                <span className="flex items-center gap-1"><Camera size={14} /> Photo</span>
+                                            ) : (
+                                                chatsData[friend.uid].lastMessage.text
+                                            )
+                                        ) : (
+                                            'Tap to chat'
+                                        )}
+                                    </p>
+                                    {chatsData[friend.uid]?.unreadCount > 0 && (
+                                        <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+                                            <span className="text-xs font-bold text-white">{chatsData[friend.uid].unreadCount}</span>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     ))
@@ -816,8 +869,8 @@ function ChatView({ user, friend, onBack }) {
                                     <div className="flex flex-col items-end max-w-[70%]">
                                         <div
                                             className={`${isMe
-                                                    ? 'bg-blue-600 text-white rounded-2xl rounded-br-md'
-                                                    : 'bg-[#3e4042] text-white rounded-2xl rounded-bl-md'
+                                                ? 'bg-blue-600 text-white rounded-2xl rounded-br-md'
+                                                : 'bg-[#3e4042] text-white rounded-2xl rounded-bl-md'
                                                 } ${msg.type === 'image' ? 'p-1' : 'px-3 py-2'}`}
                                         >
                                             {msg.type === 'image' ? (
@@ -885,8 +938,8 @@ function ChatView({ user, friend, onBack }) {
                         type="submit"
                         disabled={!newMessage.trim()}
                         className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${newMessage.trim()
-                                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                                : 'bg-[#3a3b3c] text-gray-600'
+                            ? 'bg-blue-600 text-white hover:bg-blue-700'
+                            : 'bg-[#3a3b3c] text-gray-600'
                             }`}
                     >
                         <Send size={20} />
