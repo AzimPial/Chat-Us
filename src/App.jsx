@@ -39,7 +39,9 @@ import {
     Loader2,
     LogOut,
     Camera,
-    Image as ImageIcon
+    Image as ImageIcon,
+    MoreVertical,
+    Trash2
 } from 'lucide-react';
 
 const Input = ({ value, onChange, placeholder, type = "text", className = "" }) => (
@@ -684,15 +686,15 @@ function FriendSearchCard({ user }) {
                                 <div className="flex gap-2">
                                     <button
                                         onClick={() => handleRequest(req, true)}
-                                        className="p-2 bg-blue-600 hover:bg-blue-700 rounded-full text-white transition-colors"
+                                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-white text-sm font-medium transition-colors"
                                     >
-                                        <Check size={16} />
+                                        Accept
                                     </button>
                                     <button
                                         onClick={() => handleRequest(req, false)}
-                                        className="p-2 bg-gray-800 hover:bg-gray-700 rounded-full text-gray-400 transition-colors"
+                                        className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-gray-300 text-sm font-medium transition-colors"
                                     >
-                                        <X size={16} />
+                                        Reject
                                     </button>
                                 </div>
                             </div>
@@ -812,25 +814,52 @@ function ChatView({ user, friend, onBack }) {
                 </div>
             )}
 
-            <div className="sticky top-0 z-10 px-4 py-3 border-b border-gray-800 bg-[#1a1a1a] flex items-center gap-3 shadow-lg">
-                <button
-                    onClick={onBack}
-                    className="p-1.5 -ml-1.5 text-gray-400 hover:text-gray-300 hover:bg-gray-800 rounded-full transition-all"
-                >
-                    <ChevronLeft size={24} />
-                </button>
-                <div className="w-10 h-10 rounded-full bg-gray-800 overflow-hidden">
-                    {friend.photoURL ? (
-                        <img src={friend.photoURL} alt={friend.displayName} className="w-full h-full object-cover" />
-                    ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-400 font-semibold">
-                            {friend.displayName?.[0]?.toUpperCase() || 'U'}
-                        </div>
-                    )}
+            <div className="sticky top-0 z-10 px-4 py-3 border-b border-gray-800 bg-[#1a1a1a] flex items-center justify-between shadow-lg">
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={onBack}
+                        className="p-1.5 -ml-1.5 text-gray-400 hover:text-gray-300 hover:bg-gray-800 rounded-full transition-all"
+                    >
+                        <ChevronLeft size={24} />
+                    </button>
+                    <div className="w-10 h-10 rounded-full bg-gray-800 overflow-hidden">
+                        {friend.photoURL ? (
+                            <img src={friend.photoURL} alt={friend.displayName} className="w-full h-full object-cover" />
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-400 font-semibold">
+                                {friend.displayName?.[0]?.toUpperCase() || 'U'}
+                            </div>
+                        )}
+                    </div>
+                    <div>
+                        <h3 className="font-semibold text-white">{friend.displayName || 'Unknown User'}</h3>
+                        <p className="text-xs text-gray-500">Active now</p>
+                    </div>
                 </div>
-                <div>
-                    <h3 className="font-semibold text-white">{friend.displayName || 'Unknown User'}</h3>
-                    <p className="text-xs text-gray-500">Active now</p>
+
+                <div className="relative group">
+                    <button className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-full transition-colors">
+                        <MoreVertical size={20} />
+                    </button>
+                    <div className="absolute right-0 top-full mt-2 w-48 bg-gray-900 border border-gray-800 rounded-xl shadow-xl overflow-hidden hidden group-hover:block z-50">
+                        <button
+                            onClick={async () => {
+                                if (window.confirm('Are you sure you want to remove this friend? Chat history will be kept.')) {
+                                    try {
+                                        await deleteDoc(doc(db, 'users', user.uid, 'friends', friend.uid));
+                                        await deleteDoc(doc(db, 'users', friend.uid, 'friends', user.uid));
+                                        onBack();
+                                    } catch (err) {
+                                        console.error("Error removing friend:", err);
+                                    }
+                                }
+                            }}
+                            className="w-full px-4 py-3 text-left text-red-400 hover:bg-gray-800 hover:text-red-300 flex items-center gap-2 transition-colors"
+                        >
+                            <Trash2 size={16} />
+                            Remove Friend
+                        </button>
+                    </div>
                 </div>
             </div>
 
