@@ -41,7 +41,9 @@ import {
     Camera,
     Image as ImageIcon,
     MoreVertical,
-    Trash2
+    Trash2,
+    Users,
+    Plus
 } from 'lucide-react';
 
 const Input = ({ value, onChange, placeholder, type = "text", className = "" }) => (
@@ -351,10 +353,109 @@ function ProfileSetup({ user, profile, onSave }) {
     );
 }
 
+function CreateGroupModal({ user, friends, onClose }) {
+    const [groupName, setGroupName] = useState('');
+    const [selectedMembers, setSelectedMembers] = useState([]);
+    const [creating, setCreating] = useState(false);
+
+    const handleCreate = async () => {
+        if (!groupName.trim() || selectedMembers.length === 0) return;
+        setCreating(true);
+        try {
+            const groupRef = await addDoc(collection(db, 'groups'), {
+                name: groupName.trim(),
+                createdBy: user.uid,
+                createdAt: serverTimestamp(),
+                members: [user.uid, ...selectedMembers],
+                type: 'group',
+                photoURL: null
+            });
+            onClose();
+        } catch (err) {
+            console.error("Error creating group:", err);
+        } finally {
+            setCreating(false);
+        }
+    };
+
+    const toggleMember = (uid) => {
+        if (selectedMembers.includes(uid)) {
+            setSelectedMembers(prev => prev.filter(id => id !== uid));
+        } else {
+            setSelectedMembers(prev => [...prev, uid]);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+            <div className="bg-gray-900 w-full max-w-md rounded-2xl border border-gray-800 flex flex-col max-h-[80vh]">
+                <div className="p-4 border-b border-gray-800 flex items-center justify-between">
+                    <h2 className="text-xl font-bold text-white">New Group</h2>
+                    <button onClick={onClose} className="text-gray-400 hover:text-white">
+                        <X size={24} />
+                    </button>
+                </div>
+
+                <div className="p-4 space-y-4 flex-1 overflow-y-auto">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-400 mb-2">Group Name</label>
+                        <Input
+                            value={groupName}
+                            onChange={(e) => setGroupName(e.target.value)}
+                            placeholder="Enter group name"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-400 mb-2">Select Members</label>
+                        <div className="space-y-2">
+                            {friends.map(friend => (
+                                <div
+                                    key={friend.uid}
+                                    onClick={() => toggleMember(friend.uid)}
+                                    className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${selectedMembers.includes(friend.uid)
+                                        ? 'bg-blue-600/20 border-blue-600'
+                                        : 'bg-gray-800 border-gray-700 hover:border-gray-600'
+                                        }`}
+                                >
+                                    <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${selectedMembers.includes(friend.uid)
+                                        ? 'bg-blue-600 border-blue-600'
+                                        : 'border-gray-500'
+                                        }`}>
+                                        {selectedMembers.includes(friend.uid) && <Check size={12} className="text-white" />}
+                                    </div>
+                                    <div className="w-8 h-8 rounded-full bg-gray-700 overflow-hidden">
+                                        {friend.photoURL ? (
+                                            <img src={friend.photoURL} alt={friend.displayName} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center text-gray-400 font-semibold text-xs">
+                                                {friend.displayName?.[0]?.toUpperCase()}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <span className="text-white font-medium">{friend.displayName}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="p-4 border-t border-gray-800">
+                    <Button onClick={handleCreate} disabled={creating || !groupName.trim() || selectedMembers.length === 0}>
+                        {creating ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Create Group'}
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 function ConversationsList({ friends, user, profile, onSelectFriend, onOpenProfile, onLogout }) {
     const [searchQuery, setSearchQuery] = useState('');
     const [friendProfiles, setFriendProfiles] = useState({});
     const [showAddFriend, setShowAddFriend] = useState(false);
+    const [showCreateGroup, setShowCreateGroup] = useState(false);
+    const [groups, setGroups] = useState([]);
 
     const [chatsData, setChatsData] = useState({});
 
@@ -401,14 +502,30 @@ function ConversationsList({ friends, user, profile, onSelectFriend, onOpenProfi
         return () => unsubscribes.forEach(unsub => unsub());
     }, [friends]);
 
+    useEffect(() => {
+        if (!user) return;
+        const q = query(collection(db, 'groups'), where('members', 'array-contains', user.uid));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            setGroups(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), type: 'group' })));
+        });
+        return unsubscribe;
+    }, [user]);
+
     const friendsWithUpdatedData = friends.map(friend => ({
         ...friend,
-        ...friendProfiles[friend.uid]
+        ...friendProfiles[friend.uid],
+        type: 'user'
     }));
 
-    const filteredFriends = friendsWithUpdatedData.filter(friend =>
-        friend.displayName?.toLowerCase().includes(searchQuery.toLowerCase())
+    const allConversations = [...friendsWithUpdatedData, ...groups];
+
+    const filteredConversations = allConversations.filter(conv =>
+        (conv.name || conv.displayName)?.toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+    if (showCreateGroup) {
+        return <CreateGroupModal user={user} friends={friendsWithUpdatedData} onClose={() => setShowCreateGroup(false)} />;
+    }
 
     if (showAddFriend) {
         return (
@@ -444,11 +561,18 @@ function ConversationsList({ friends, user, profile, onSelectFriend, onOpenProfi
                     </div>
                     <div className="flex gap-2">
                         <button
+                            onClick={() => setShowCreateGroup(true)}
+                            className="p-2 hover:bg-gray-800 rounded-full transition-colors text-gray-400 hover:text-white"
+                            title="New Group"
+                        >
+                            <Users size={20} />
+                        </button>
+                        <button
                             onClick={() => setShowAddFriend(true)}
                             className="p-2 hover:bg-gray-800 rounded-full transition-colors text-gray-400 hover:text-white"
                             title="Add Friend"
                         >
-                            <User size={20} />
+                            <Plus size={20} />
                         </button>
                         <button
                             onClick={onLogout}
@@ -472,56 +596,66 @@ function ConversationsList({ friends, user, profile, onSelectFriend, onOpenProfi
             </div>
 
             <div className="flex-1 overflow-y-auto">
-                {filteredFriends.length === 0 ? (
+                {filteredConversations.length === 0 ? (
                     <div className="p-8 text-center">
                         <p className="text-gray-500 text-sm">No conversations found</p>
                     </div>
                 ) : (
-                    filteredFriends.map(friend => (
-                        <div
-                            key={friend.id}
-                            onClick={() => onSelectFriend(friend)}
-                            className="px-4 py-3 border-b border-gray-900 hover:bg-gray-900 cursor-pointer transition-colors flex items-center gap-3"
-                        >
-                            <div className="w-12 h-12 rounded-full bg-gray-800 overflow-hidden flex-shrink-0">
-                                {friend.photoURL ? (
-                                    <img src={friend.photoURL} alt={friend.displayName} className="w-full h-full object-cover" />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-gray-400 font-semibold text-lg">
-                                        {friend.displayName?.[0]?.toUpperCase() || 'U'}
-                                    </div>
-                                )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between mb-0.5">
-                                    <h3 className="font-semibold text-white truncate">{friend.displayName || 'Unknown User'}</h3>
-                                    {chatsData[friend.uid]?.lastMessage?.timestamp && (
-                                        <span className={`text-xs ${chatsData[friend.uid]?.unreadCount > 0 ? 'text-blue-500 font-bold' : 'text-gray-500'}`}>
-                                            {new Date(chatsData[friend.uid].lastMessage.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
-                                    )}
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <p className={`text-sm truncate pr-2 ${chatsData[friend.uid]?.unreadCount > 0 ? 'text-white font-bold' : 'text-gray-500'}`}>
-                                        {chatsData[friend.uid]?.lastMessage ? (
-                                            chatsData[friend.uid].lastMessage.type === 'image' ? (
-                                                <span className="flex items-center gap-1"><Camera size={14} /> Photo</span>
-                                            ) : (
-                                                chatsData[friend.uid].lastMessage.text
-                                            )
-                                        ) : (
-                                            'Tap to chat'
-                                        )}
-                                    </p>
-                                    {chatsData[friend.uid]?.unreadCount > 0 && (
-                                        <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
-                                            <span className="text-xs font-bold text-white">{chatsData[friend.uid].unreadCount}</span>
+                    filteredConversations.map(conv => {
+                        const isGroup = conv.type === 'group';
+                        const id = isGroup ? conv.id : conv.uid;
+                        const name = isGroup ? conv.name : conv.displayName;
+                        const photo = conv.photoURL;
+                        const chatData = isGroup ? {} : (chatsData[id] || {}); // TODO: Add group chat data logic
+
+                        return (
+                            <div
+                                key={id}
+                                onClick={() => onSelectFriend(conv)}
+                                className="px-4 py-3 border-b border-gray-900 hover:bg-gray-900 cursor-pointer transition-colors flex items-center gap-3"
+                            >
+                                <div className="w-12 h-12 rounded-full bg-gray-800 overflow-hidden flex-shrink-0">
+                                    {photo ? (
+                                        <img src={photo} alt={name} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-gray-400 font-semibold text-lg">
+                                            {isGroup ? <Users size={20} /> : (name?.[0]?.toUpperCase() || 'U')}
                                         </div>
                                     )}
                                 </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between mb-0.5">
+                                        <h3 className="font-semibold text-white truncate">{name || 'Unknown'}</h3>
+                                        {chatData?.lastMessage?.timestamp && (
+                                            <span className={`text-xs ${chatData?.unreadCount > 0 ? 'text-blue-500 font-bold' : 'text-gray-500'}`}>
+                                                {new Date(chatData.lastMessage.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <p className={`text-sm truncate pr-2 ${chatData?.unreadCount > 0 ? 'text-white font-bold' : 'text-gray-500'}`}>
+                                            {isGroup ? 'Group Chat' : (
+                                                chatData?.lastMessage ? (
+                                                    chatData.lastMessage.type === 'image' ? (
+                                                        <span className="flex items-center gap-1"><Camera size={14} /> Photo</span>
+                                                    ) : (
+                                                        chatData.lastMessage.text
+                                                    )
+                                                ) : (
+                                                    'Tap to chat'
+                                                )
+                                            )}
+                                        </p>
+                                        {chatData?.unreadCount > 0 && (
+                                            <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+                                                <span className="text-xs font-bold text-white">{chatData.unreadCount}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    ))
+                        );
+                    })
                 )}
             </div>
         </div>
@@ -725,12 +859,22 @@ function ChatView({ user, friend, onBack }) {
     const messagesEndRef = useRef(null);
     const imageInputRef = useRef(null);
 
+    const isGroup = friend.type === 'group';
+
     useEffect(() => {
-        const chatId = [user.uid, friend.uid].sort().join('_');
-        const q = query(
-            collection(db, 'chats', chatId, 'messages'),
-            orderBy('timestamp', 'asc')
-        );
+        let q;
+        if (isGroup) {
+            q = query(
+                collection(db, 'groups', friend.id, 'messages'),
+                orderBy('timestamp', 'asc')
+            );
+        } else {
+            const chatId = [user.uid, friend.uid].sort().join('_');
+            q = query(
+                collection(db, 'chats', chatId, 'messages'),
+                orderBy('timestamp', 'asc')
+            );
+        }
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
             setMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
@@ -738,7 +882,7 @@ function ChatView({ user, friend, onBack }) {
         });
 
         return unsubscribe;
-    }, [user, friend]);
+    }, [user, friend, isGroup]);
 
     const sendMessage = async (text = '', imageUrl = null) => {
         if (!text.trim() && !imageUrl) return;
@@ -747,11 +891,13 @@ function ChatView({ user, friend, onBack }) {
         setNewMessage('');
 
         try {
-            await addDoc(collection(db, 'chats', chatId, 'messages'), {
+            const collectionPath = isGroup ? `groups/${friend.id}/messages` : `chats/${[user.uid, friend.uid].sort().join('_')}/messages`;
+            await addDoc(collection(db, collectionPath), {
                 text: text.trim(),
                 imageUrl,
                 type: imageUrl ? 'image' : 'text',
                 senderId: user.uid,
+                senderName: user.displayName || 'Unknown', // Add sender name for groups
                 timestamp: serverTimestamp(),
                 seen: false
             });
@@ -766,7 +912,8 @@ function ChatView({ user, friend, onBack }) {
 
         setUploading(true);
         try {
-            const storageRef = ref(storage, `chats/${[user.uid, friend.uid].sort().join('_')}/${Date.now()}_${file.name}`);
+            const path = isGroup ? `groups/${friend.id}` : `chats/${[user.uid, friend.uid].sort().join('_')}`;
+            const storageRef = ref(storage, `${path}/${Date.now()}_${file.name}`);
             await uploadBytes(storageRef, file);
             const url = await getDownloadURL(storageRef);
             await sendMessage('', url);
@@ -778,6 +925,7 @@ function ChatView({ user, friend, onBack }) {
     };
 
     useEffect(() => {
+        if (isGroup) return; // TODO: Handle group read receipts differently or skip for now
         const chatId = [user.uid, friend.uid].sort().join('_');
         const unreadMessages = messages.filter(msg =>
             msg.senderId === friend.uid && !msg.seen
@@ -791,7 +939,7 @@ function ChatView({ user, friend, onBack }) {
                 console.error("Failed to update message status", err);
             }
         });
-    }, [messages, user, friend]);
+    }, [messages, user, friend, isGroup]);
 
     return (
         <div className="flex-1 flex flex-col bg-[#1a1a1a] h-full relative">
@@ -827,13 +975,13 @@ function ChatView({ user, friend, onBack }) {
                             <img src={friend.photoURL} alt={friend.displayName} className="w-full h-full object-cover" />
                         ) : (
                             <div className="w-full h-full flex items-center justify-center text-gray-400 font-semibold">
-                                {friend.displayName?.[0]?.toUpperCase() || 'U'}
+                                {isGroup ? <Users size={20} /> : (friend.displayName?.[0]?.toUpperCase() || 'U')}
                             </div>
                         )}
                     </div>
                     <div>
-                        <h3 className="font-semibold text-white">{friend.displayName || 'Unknown User'}</h3>
-                        <p className="text-xs text-gray-500">Active now</p>
+                        <h3 className="font-semibold text-white">{friend.displayName || friend.name || 'Unknown'}</h3>
+                        <p className="text-xs text-gray-500">{isGroup ? `${friend.members?.length || 0} members` : 'Active now'}</p>
                     </div>
                 </div>
 
@@ -881,11 +1029,11 @@ function ChatView({ user, friend, onBack }) {
                                         <div className="w-7 h-7 mb-0.5 flex-shrink-0">
                                             {showAvatar ? (
                                                 <div className="w-7 h-7 rounded-full bg-gray-800 overflow-hidden">
-                                                    {friend.photoURL ? (
+                                                    {friend.photoURL && !isGroup ? (
                                                         <img src={friend.photoURL} alt={friend.displayName} className="w-full h-full object-cover" />
                                                     ) : (
                                                         <div className="w-full h-full flex items-center justify-center text-gray-400 font-semibold text-xs">
-                                                            {friend.displayName?.[0]?.toUpperCase() || 'U'}
+                                                            {isGroup ? <Users size={12} /> : (friend.displayName?.[0]?.toUpperCase() || 'U')}
                                                         </div>
                                                     )}
                                                 </div>
@@ -896,6 +1044,9 @@ function ChatView({ user, friend, onBack }) {
                                     )}
 
                                     <div className="flex flex-col items-end max-w-[70%]">
+                                        {isGroup && !isMe && showAvatar && (
+                                            <span className="text-[10px] text-gray-500 mr-auto ml-1 mb-0.5">{msg.senderName}</span>
+                                        )}
                                         <div
                                             className={`${isMe
                                                 ? 'bg-blue-600 text-white rounded-2xl rounded-br-md'
