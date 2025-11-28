@@ -35,17 +35,16 @@ import {
     CheckCheck,
     X,
     Loader2,
-    Image as ImageIcon,
     LogOut,
-    Camera
+    Camera,
+    Image as ImageIcon
 } from 'lucide-react';
 
-const Input = ({ value, onChange, placeholder, type = "text", className = "", onKeyDown }) => (
+const Input = ({ value, onChange, placeholder, type = "text", className = "" }) => (
     <input
         type={type}
         value={value}
         onChange={onChange}
-        onKeyDown={onKeyDown}
         placeholder={placeholder}
         className={`w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors ${className}`}
     />
@@ -56,8 +55,8 @@ const Button = ({ children, onClick, disabled, variant = "primary", className = 
         onClick={onClick}
         disabled={disabled}
         className={`w-full font-medium py-3 rounded-xl transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${variant === "primary"
-            ? "bg-blue-600 hover:bg-blue-700 text-white"
-            : "bg-gray-800 hover:bg-gray-700 text-white"
+                ? "bg-blue-600 hover:bg-blue-700 text-white"
+                : "bg-gray-800 hover:bg-gray-700 text-white"
             } ${className}`}
     >
         {children}
@@ -68,7 +67,7 @@ export default function App() {
     const [user, setUser] = useState(null);
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [view, setView] = useState('auth'); // auth, profile, conversations, chat
+    const [view, setView] = useState('auth');
     const [activeChat, setActiveChat] = useState(null);
     const [friends, setFriends] = useState([]);
 
@@ -126,7 +125,7 @@ export default function App() {
     }
 
     if (view === 'auth') {
-        return <Auth onLogin={() => setView('conversations')} />;
+        return <Auth />;
     }
 
     if (view === 'profile') {
@@ -155,7 +154,10 @@ export default function App() {
                 <ChatView
                     user={user}
                     friend={activeChat}
-                    onBack={() => setView('conversations')}
+                    onBack={() => {
+                        setView('conversations');
+                        setActiveChat(null);
+                    }}
                 />
             ) : (
                 <div className="hidden md:flex flex-1 items-center justify-center bg-black">
@@ -184,7 +186,6 @@ function Auth() {
                 await signInWithEmailAndPassword(auth, email, password);
             } else {
                 const cred = await createUserWithEmailAndPassword(auth, email, password);
-                // Create initial user doc
                 await setDoc(doc(db, 'users', cred.user.uid), {
                     uid: cred.user.uid,
                     email: email,
@@ -192,7 +193,7 @@ function Auth() {
                 });
             }
         } catch (err) {
-            setError(err.message.replace('Firebase: ', ''));
+            setError(err.message.replace('Firebase: ', '').replace('Error (auth/', '').replace(')', ''));
         } finally {
             setLoading(false);
         }
@@ -255,7 +256,7 @@ function ProfileSetup({ user, profile, onSave }) {
     const [name, setName] = useState(profile?.displayName || '');
     const [image, setImage] = useState(null);
     const [preview, setPreview] = useState(profile?.photoURL || null);
-    const [uploading, setUploading] = useState(false);
+    const [saving, setSaving] = useState(false);
     const fileInputRef = useRef(null);
 
     const handleImageChange = (e) => {
@@ -268,7 +269,7 @@ function ProfileSetup({ user, profile, onSave }) {
 
     const handleSave = async () => {
         if (!name.trim()) return;
-        setUploading(true);
+        setSaving(true);
         try {
             let photoURL = profile?.photoURL || null;
 
@@ -289,7 +290,7 @@ function ProfileSetup({ user, profile, onSave }) {
         } catch (error) {
             console.error("Error saving profile:", error);
         } finally {
-            setUploading(false);
+            setSaving(false);
         }
     };
 
@@ -325,7 +326,7 @@ function ProfileSetup({ user, profile, onSave }) {
                             accept="image/*"
                             className="hidden"
                         />
-                        <p className="text-sm text-gray-500">Tap to change photo</p>
+                        <p className="text-sm text-gray-500">Tap to {preview ? 'change' : 'add'} photo</p>
                     </div>
 
                     <div>
@@ -337,8 +338,8 @@ function ProfileSetup({ user, profile, onSave }) {
                         />
                     </div>
 
-                    <Button onClick={handleSave} disabled={uploading || !name.trim()}>
-                        {uploading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Save Profile'}
+                    <Button onClick={handleSave} disabled={saving || !name.trim()}>
+                        {saving ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Save Profile'}
                     </Button>
                 </div>
             </div>
@@ -366,12 +367,12 @@ function ConversationsList({ friends, user, profile, onSelectFriend, onOpenProfi
         return () => unsubscribes.forEach(unsub => unsub());
     }, [friends]);
 
-    const friendsWithUpdatedNames = friends.map(friend => ({
+    const friendsWithUpdatedData = friends.map(friend => ({
         ...friend,
         ...friendProfiles[friend.uid]
     }));
 
-    const filteredFriends = friendsWithUpdatedNames.filter(friend =>
+    const filteredFriends = friendsWithUpdatedData.filter(friend =>
         friend.displayName?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
@@ -384,7 +385,7 @@ function ConversationsList({ friends, user, profile, onSelectFriend, onOpenProfi
                     </button>
                     <h2 className="text-xl font-bold text-white">Add Friend</h2>
                 </div>
-                <div className="p-4">
+                <div className="p-4 overflow-y-auto">
                     <FriendSearchCard user={user} />
                 </div>
             </div>
@@ -400,7 +401,7 @@ function ConversationsList({ friends, user, profile, onSelectFriend, onOpenProfi
                             {profile?.photoURL ? (
                                 <img src={profile.photoURL} alt="Me" className="w-full h-full object-cover" />
                             ) : (
-                                <div className="w-full h-full flex items-center justify-center text-gray-500">
+                                <div className="w-full h-full flex items-center justify-center text-gray-400">
                                     <User size={20} />
                                 </div>
                             )}
@@ -452,14 +453,14 @@ function ConversationsList({ friends, user, profile, onSelectFriend, onOpenProfi
                                 {friend.photoURL ? (
                                     <img src={friend.photoURL} alt={friend.displayName} className="w-full h-full object-cover" />
                                 ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-gray-500 font-semibold text-lg">
-                                        {friend.displayName?.[0]?.toUpperCase()}
+                                    <div className="w-full h-full flex items-center justify-center text-gray-400 font-semibold text-lg">
+                                        {friend.displayName?.[0]?.toUpperCase() || 'U'}
                                     </div>
                                 )}
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between mb-0.5">
-                                    <h3 className="font-semibold text-white truncate">{friend.displayName}</h3>
+                                    <h3 className="font-semibold text-white truncate">{friend.displayName || 'Unknown User'}</h3>
                                     <span className="text-xs text-gray-500">Now</span>
                                 </div>
                                 <p className="text-sm text-gray-500 truncate">Tap to chat</p>
@@ -586,11 +587,11 @@ function FriendSearchCard({ user }) {
                                     <img src={result.photoURL} alt={result.displayName} className="w-full h-full object-cover" />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center text-gray-400 font-semibold">
-                                        {result.displayName?.[0]?.toUpperCase()}
+                                        {result.displayName?.[0]?.toUpperCase() || 'U'}
                                     </div>
                                 )}
                             </div>
-                            <span className="font-medium text-white">{result.displayName}</span>
+                            <span className="font-medium text-white">{result.displayName || 'Unknown User'}</span>
                         </div>
                         {status === 'sent' ? (
                             <span className="text-green-400 text-sm flex items-center gap-1">
@@ -621,11 +622,11 @@ function FriendSearchCard({ user }) {
                                             <img src={req.fromPhoto} alt={req.fromName} className="w-full h-full object-cover" />
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center text-gray-400 font-semibold">
-                                                {req.fromName?.[0]?.toUpperCase()}
+                                                {req.fromName?.[0]?.toUpperCase() || 'U'}
                                             </div>
                                         )}
                                     </div>
-                                    <span className="font-medium text-white">{req.fromName}</span>
+                                    <span className="font-medium text-white">{req.fromName || 'Unknown User'}</span>
                                 </div>
                                 <div className="flex gap-2">
                                     <button
@@ -650,14 +651,247 @@ function FriendSearchCard({ user }) {
             <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800 space-y-2">
                 <h3 className="font-semibold text-white">Your Friend Code</h3>
                 <div
-                    onClick={() => {
-                        navigator.clipboard.writeText(user.uid);
-                    }}
+                    onClick={() => navigator.clipboard.writeText(user.uid)}
                     className="bg-black p-4 rounded-xl border border-gray-800 cursor-pointer hover:border-gray-700 transition-colors group"
                 >
                     <p className="text-gray-400 font-mono text-sm break-all group-hover:text-white transition-colors text-center">{user.uid}</p>
                 </div>
                 <p className="text-xs text-center text-gray-500">Tap code to copy</p>
+            </div>
+        </div>
+    );
+}
+
+function ChatView({ user, friend, onBack }) {
+    const [messages, setMessages] = useState([]);
+    const [newMessage, setNewMessage] = useState('');
+    const [uploading, setUploading] = useState(false);
+    const [fullScreenImage, setFullScreenImage] = useState(null);
+    const messagesEndRef = useRef(null);
+    const imageInputRef = useRef(null);
+
+    useEffect(() => {
+        const chatId = [user.uid, friend.uid].sort().join('_');
+        const q = query(
+            collection(db, 'chats', chatId, 'messages'),
+            orderBy('timestamp', 'asc')
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            setMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+            setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+        });
+
+        return unsubscribe;
+    }, [user, friend]);
+
+    const sendMessage = async (text = '', imageUrl = null) => {
+        if (!text.trim() && !imageUrl) return;
+
+        const chatId = [user.uid, friend.uid].sort().join('_');
+        setNewMessage('');
+
+        try {
+            await addDoc(collection(db, 'chats', chatId, 'messages'), {
+                text: text.trim(),
+                imageUrl,
+                type: imageUrl ? 'image' : 'text',
+                senderId: user.uid,
+                timestamp: serverTimestamp(),
+                seen: false
+            });
+        } catch (err) {
+            console.error("Failed to send", err);
+        }
+    };
+
+    const handleImageSelect = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setUploading(true);
+        try {
+            const storageRef = ref(storage, `chats/${[user.uid, friend.uid].sort().join('_')}/${Date.now()}_${file.name}`);
+            await uploadBytes(storageRef, file);
+            const url = await getDownloadURL(storageRef);
+            await sendMessage('', url);
+        } catch (err) {
+            console.error("Error uploading image:", err);
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    useEffect(() => {
+        const chatId = [user.uid, friend.uid].sort().join('_');
+        const unreadMessages = messages.filter(msg =>
+            msg.senderId === friend.uid && !msg.seen
+        );
+
+        unreadMessages.forEach(async (msg) => {
+            try {
+                const msgRef = doc(db, 'chats', chatId, 'messages', msg.id);
+                await updateDoc(msgRef, { seen: true });
+            } catch (err) {
+                console.error("Failed to update message status", err);
+            }
+        });
+    }, [messages, user, friend]);
+
+    return (
+        <div className="flex-1 flex flex-col bg-[#1a1a1a] h-full relative">
+            {fullScreenImage && (
+                <div
+                    className="absolute inset-0 z-50 bg-black/95 flex items-center justify-center p-4"
+                    onClick={() => setFullScreenImage(null)}
+                >
+                    <button
+                        className="absolute top-4 right-4 text-white hover:text-gray-300 z-10"
+                        onClick={() => setFullScreenImage(null)}
+                    >
+                        <X size={32} />
+                    </button>
+                    <img
+                        src={fullScreenImage}
+                        alt="Full screen"
+                        className="max-w-full max-h-full object-contain rounded-lg"
+                    />
+                </div>
+            )}
+
+            <div className="sticky top-0 z-10 px-4 py-3 border-b border-gray-800 bg-[#1a1a1a] flex items-center gap-3 shadow-lg">
+                <button
+                    onClick={onBack}
+                    className="p-1.5 -ml-1.5 text-gray-400 hover:text-gray-300 hover:bg-gray-800 rounded-full transition-all"
+                >
+                    <ChevronLeft size={24} />
+                </button>
+                <div className="w-10 h-10 rounded-full bg-gray-800 overflow-hidden">
+                    {friend.photoURL ? (
+                        <img src={friend.photoURL} alt={friend.displayName} className="w-full h-full object-cover" />
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-400 font-semibold">
+                            {friend.displayName?.[0]?.toUpperCase() || 'U'}
+                        </div>
+                    )}
+                </div>
+                <div>
+                    <h3 className="font-semibold text-white">{friend.displayName || 'Unknown User'}</h3>
+                    <p className="text-xs text-gray-500">Active now</p>
+                </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 bg-[#1a1a1a]" style={{ scrollBehavior: 'smooth' }}>
+                {messages.length === 0 ? (
+                    <div className="flex items-center justify-center h-full">
+                        <p className="text-gray-600 text-sm">No messages yet. Say hi! 👋</p>
+                    </div>
+                ) : (
+                    <div className="space-y-1">
+                        {messages.map((msg, idx) => {
+                            const isMe = msg.senderId === user.uid;
+                            const prevMsg = messages[idx - 1];
+                            const showAvatar = !prevMsg || prevMsg.senderId !== msg.senderId;
+
+                            return (
+                                <div key={msg.id} className={`flex items-end gap-2 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                                    {!isMe && (
+                                        <div className="w-7 h-7 mb-0.5 flex-shrink-0">
+                                            {showAvatar ? (
+                                                <div className="w-7 h-7 rounded-full bg-gray-800 overflow-hidden">
+                                                    {friend.photoURL ? (
+                                                        <img src={friend.photoURL} alt={friend.displayName} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center text-gray-400 font-semibold text-xs">
+                                                            {friend.displayName?.[0]?.toUpperCase() || 'U'}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <div className="w-7 h-7"></div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    <div className="flex flex-col items-end max-w-[70%]">
+                                        <div
+                                            className={`${isMe
+                                                    ? 'bg-blue-600 text-white rounded-2xl rounded-br-md'
+                                                    : 'bg-[#3e4042] text-white rounded-2xl rounded-bl-md'
+                                                } ${msg.type === 'image' ? 'p-1' : 'px-3 py-2'}`}
+                                        >
+                                            {msg.type === 'image' ? (
+                                                <div
+                                                    className="cursor-pointer"
+                                                    onClick={() => setFullScreenImage(msg.imageUrl)}
+                                                >
+                                                    <img
+                                                        src={msg.imageUrl}
+                                                        alt="Sent image"
+                                                        className="rounded-xl max-w-full max-h-64 object-cover"
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <p className="text-[15px] leading-snug break-words whitespace-pre-wrap">
+                                                    {msg.text}
+                                                </p>
+                                            )}
+                                        </div>
+                                        {isMe && (
+                                            <div className="flex items-center gap-1 mt-0.5 mr-1">
+                                                {msg.seen ? (
+                                                    <CheckCheck size={14} className="text-blue-400" />
+                                                ) : (
+                                                    <CheckCheck size={14} className="text-gray-500" />
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                        <div ref={messagesEndRef} />
+                    </div>
+                )}
+            </div>
+
+            <div className="sticky bottom-0 p-3 border-t border-gray-800 bg-[#1a1a1a] shadow-lg">
+                <form onSubmit={(e) => { e.preventDefault(); sendMessage(newMessage); }} className="flex items-center gap-2">
+                    <input
+                        type="file"
+                        ref={imageInputRef}
+                        onChange={handleImageSelect}
+                        accept="image/*"
+                        className="hidden"
+                    />
+                    <button
+                        type="button"
+                        onClick={() => imageInputRef.current?.click()}
+                        disabled={uploading}
+                        className="p-2 text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+                    >
+                        {uploading ? <Loader2 size={24} className="animate-spin" /> : <ImageIcon size={24} />}
+                    </button>
+                    <div className="flex-1 bg-[#3a3b3c] rounded-full px-4 py-2.5 flex items-center">
+                        <input
+                            type="text"
+                            value={newMessage}
+                            onChange={(e) => setNewMessage(e.target.value)}
+                            placeholder="Message..."
+                            className="flex-1 bg-transparent outline-none text-white placeholder-gray-500"
+                        />
+                    </div>
+                    <button
+                        type="submit"
+                        disabled={!newMessage.trim()}
+                        className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${newMessage.trim()
+                                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                : 'bg-[#3a3b3c] text-gray-600'
+                            }`}
+                    >
+                        <Send size={20} />
+                    </button>
+                </form>
             </div>
         </div>
     );
