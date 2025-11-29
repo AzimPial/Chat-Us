@@ -594,6 +594,29 @@ function GroupInfoModal({ group, user, onClose, onLeave }) {
         }
     };
 
+    const handleRemoveMember = async (memberUid) => {
+        if (group.createdBy !== user.uid) {
+            alert("Only the admin can remove members");
+            return;
+        }
+
+        if (memberUid === user.uid) {
+            alert("You cannot remove yourself. Use 'Leave Group' instead.");
+            return;
+        }
+
+        if (!window.confirm('Remove this member from the group?')) return;
+
+        try {
+            const updatedMembers = group.members.filter(uid => uid !== memberUid);
+            await updateDoc(doc(db, 'groups', group.id), {
+                members: updatedMembers
+            });
+        } catch (err) {
+            console.error("Error removing member:", err);
+        }
+    };
+
     return (
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
             <div className="bg-gray-900 w-full max-w-md rounded-2xl border border-gray-800 flex flex-col max-h-[80vh]">
@@ -640,6 +663,14 @@ function GroupInfoModal({ group, user, onClose, onLeave }) {
                                                 <p className="text-xs text-blue-400">Admin</p>
                                             )}
                                         </div>
+                                        {group.createdBy === user.uid && member.uid !== user.uid && (
+                                            <button
+                                                onClick={() => handleRemoveMember(member.uid)}
+                                                className="px-3 py-1.5 bg-red-600/20 hover:bg-red-600/30 border border-red-600 rounded-lg text-red-400 text-xs font-medium transition-colors"
+                                            >
+                                                Remove
+                                            </button>
+                                        )}
                                     </div>
                                 ))}
                             </div>
@@ -671,6 +702,7 @@ function ConversationsList({ friends, user, profile, onSelectFriend, onOpenProfi
     const [newDisplayName, setNewDisplayName] = useState(profile?.displayName || '');
 
     const [chatsData, setChatsData] = useState({});
+    const [groupChatsData, setGroupChatsData] = useState({});
 
     useEffect(() => {
         if (!user || !friends.length) return;
@@ -724,13 +756,55 @@ function ConversationsList({ friends, user, profile, onSelectFriend, onOpenProfi
         return unsubscribe;
     }, [user]);
 
+    // Track group messages
+    useEffect(() => {
+        if (!user || !groups.length) return;
+
+        const unsubscribes = groups.map(group => {
+            const q = query(
+                collection(db, 'groups', group.id, 'messages'),
+                orderBy('timestamp', 'desc'),
+                limit(20)
+            );
+
+            return onSnapshot(q, (snapshot) => {
+                const messages = snapshot.docs.map(doc => doc.data());
+                const lastMsg = messages[0];
+                const unreadCount = messages.filter(m => !m.seen && m.senderId !== user.uid).length;
+
+                setGroupChatsData(prev => ({
+                    ...prev,
+                    [group.id]: {
+                        lastMessage: lastMsg,
+                        unreadCount: unreadCount
+                    }
+                }));
+            });
+        });
+        return () => unsubscribes.forEach(unsub => unsub());
+    }, [groups, user]);
+
     const friendsWithUpdatedData = friends.map(friend => ({
         ...friend,
         ...friendProfiles[friend.uid],
         type: 'user'
     }));
 
-    const allConversations = [...friendsWithUpdatedData, ...groups];
+    // Combine and sort all conversations by latest message
+    const allConversations = [
+        ...friendsWithUpdatedData.map(f => ({
+            ...f,
+            lastMessageTime: chatsData[f.uid]?.lastMessage?.timestamp
+        })),
+        ...groups.map(g => ({
+            ...g,
+            lastMessageTime: groupChatsData[g.id]?.lastMessage?.timestamp
+        }))
+    ].sort((a, b) => {
+        const timeA = a.lastMessageTime?.toMillis() || 0;
+        const timeB = b.lastMessageTime?.toMillis() || 0;
+        return timeB - timeA; // Most recent first
+    });
 
     const filteredConversations = allConversations.filter(conv =>
         (conv.name || conv.displayName)?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -811,7 +885,6 @@ function ConversationsList({ friends, user, profile, onSelectFriend, onOpenProfi
                                     <h2 className="text-xl font-bold text-white">Chats</h2>
                                 </div>
                             )}
-                            <p className="text-sm text-gray-500">Recent conversations</p>
                         </div>
                     </div>
                     <div className="flex gap-2">
@@ -861,7 +934,7 @@ function ConversationsList({ friends, user, profile, onSelectFriend, onOpenProfi
                         const id = isGroup ? conv.id : conv.uid;
                         const name = isGroup ? conv.name : conv.displayName;
                         const photo = conv.photoURL;
-                        const chatData = isGroup ? {} : (chatsData[id] || {}); // TODO: Add group chat data logic
+                        const chatData = isGroup ? (groupChatsData[id] || {}) : (chatsData[id] || {});
 
                         return (
                             <div
@@ -880,7 +953,7 @@ function ConversationsList({ friends, user, profile, onSelectFriend, onOpenProfi
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center justify-between mb-0.5">
-                                        <h3 className="font-semibold text-white truncate">{name || 'Unknown'}</h3>
+                                        <h3 className={`font-semibold truncate ${chatData?.unreadCount > 0 ? 'text-white font-bold' : 'text-white'}`}>{name || 'Unknown'}</h3>
                                         {chatData?.lastMessage?.timestamp && (
                                             <span className={`text-xs ${chatData?.unreadCount > 0 ? 'text-blue-500 font-bold' : 'text-gray-500'}`}>
                                                 {new Date(chatData.lastMessage.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -889,16 +962,14 @@ function ConversationsList({ friends, user, profile, onSelectFriend, onOpenProfi
                                     </div>
                                     <div className="flex items-center justify-between">
                                         <p className={`text-sm truncate pr-2 ${chatData?.unreadCount > 0 ? 'text-white font-bold' : 'text-gray-500'}`}>
-                                            {isGroup ? 'Group Chat' : (
-                                                chatData?.lastMessage ? (
-                                                    chatData.lastMessage.type === 'image' ? (
-                                                        <span className="flex items-center gap-1"><Camera size={14} /> Photo</span>
-                                                    ) : (
-                                                        chatData.lastMessage.text
-                                                    )
+                                            {chatData?.lastMessage ? (
+                                                chatData.lastMessage.type === 'image' ? (
+                                                    <span className="flex items-center gap-1"><Camera size={14} /> Photo</span>
                                                 ) : (
-                                                    'Tap to chat'
+                                                    chatData.lastMessage.text
                                                 )
+                                            ) : (
+                                                isGroup ? 'Group Chat' : 'Tap to chat'
                                             )}
                                         </p>
                                         {chatData?.unreadCount > 0 && (
