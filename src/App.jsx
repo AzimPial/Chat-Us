@@ -118,6 +118,10 @@ export default function App() {
     const [view, setView] = useState('auth');
     const [activeChat, setActiveChat] = useState(null);
     const [friends, setFriends] = useState([]);
+    const [chatsData, setChatsData] = useState({});
+    const [groupChatsData, setGroupChatsData] = useState({});
+    const [friendProfiles, setFriendProfiles] = useState({});
+    const [groups, setGroups] = useState([]);
 
     useEffect(() => {
         setPersistence(auth, browserLocalPersistence).catch(console.error);
@@ -159,6 +163,89 @@ export default function App() {
 
         return unsubscribe;
     }, [user]);
+
+    // Fetch friend profiles
+    useEffect(() => {
+        const unsubscribes = friends.map(friend => {
+            const friendDocRef = doc(db, 'users', friend.uid);
+            return onSnapshot(friendDocRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    setFriendProfiles(prev => ({
+                        ...prev,
+                        [friend.uid]: docSnap.data()
+                    }));
+                }
+            });
+        });
+        return () => unsubscribes.forEach(unsub => unsub());
+    }, [friends]);
+
+    // Fetch groups
+    useEffect(() => {
+        if (!user) return;
+        const q = query(collection(db, 'groups'), where('members', 'array-contains', user.uid));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            setGroups(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), type: 'group' })));
+        });
+        return unsubscribe;
+    }, [user]);
+
+    // Fetch chat data (last message, unread count)
+    useEffect(() => {
+        if (!user || !friends.length) return;
+
+        const unsubscribes = friends.map(friend => {
+            const chatId = [user.uid, friend.uid].sort().join('_');
+            const q = query(
+                collection(db, 'chats', chatId, 'messages'),
+                orderBy('timestamp', 'desc'),
+                limit(20)
+            );
+
+            return onSnapshot(q, (snapshot) => {
+                const messages = snapshot.docs.map(doc => doc.data());
+                const lastMsg = messages[0];
+                const unreadCount = messages.filter(m => !m.seen && m.senderId === friend.uid).length;
+
+                setChatsData(prev => ({
+                    ...prev,
+                    [friend.uid]: {
+                        lastMessage: lastMsg,
+                        unreadCount: unreadCount
+                    }
+                }));
+            });
+        });
+        return () => unsubscribes.forEach(unsub => unsub());
+    }, [friends, user]);
+
+    // Fetch group chat data
+    useEffect(() => {
+        if (!user || !groups.length) return;
+
+        const unsubscribes = groups.map(group => {
+            const q = query(
+                collection(db, 'groups', group.id, 'messages'),
+                orderBy('timestamp', 'desc'),
+                limit(20)
+            );
+
+            return onSnapshot(q, (snapshot) => {
+                const messages = snapshot.docs.map(doc => doc.data());
+                const lastMsg = messages[0];
+                const unreadCount = messages.filter(m => !m.seen && m.senderId !== user.uid).length;
+
+                setGroupChatsData(prev => ({
+                    ...prev,
+                    [group.id]: {
+                        lastMessage: lastMsg,
+                        unreadCount: unreadCount
+                    }
+                }));
+            });
+        });
+        return () => unsubscribes.forEach(unsub => unsub());
+    }, [groups, user]);
 
     // Notification Listener
     useEffect(() => {
@@ -246,6 +333,10 @@ export default function App() {
                             friends={friends}
                             user={user}
                             profile={profile}
+                            chatsData={chatsData}
+                            groupChatsData={groupChatsData}
+                            friendProfiles={friendProfiles}
+                            groups={groups}
                             onSelectFriend={(friend) => {
                                 setActiveChat(friend);
                                 setView('chat');
@@ -894,111 +985,13 @@ function GroupInfoModal({ group, user, profile, onClose, onLeave }) {
     );
 }
 
-function ConversationsList({ friends, user, profile, onSelectFriend, onOpenProfile, onLogout }) {
+function ConversationsList({ friends, user, profile, chatsData, groupChatsData, friendProfiles, groups, onSelectFriend, onOpenProfile, onLogout }) {
     const [searchQuery, setSearchQuery] = useState('');
-    const [friendProfiles, setFriendProfiles] = useState({});
     const [showAddFriend, setShowAddFriend] = useState(false);
     const [showCreateGroup, setShowCreateGroup] = useState(false);
-    const [groups, setGroups] = useState([]);
     const [editingName, setEditingName] = useState(false);
     const [newDisplayName, setNewDisplayName] = useState(profile?.displayName || '');
 
-    const [chatsData, setChatsData] = useState({});
-    const [groupChatsData, setGroupChatsData] = useState({});
-    const [initialLoading, setInitialLoading] = useState(true);
-
-    useEffect(() => {
-        if (!user || !friends.length) return;
-
-        const unsubscribes = friends.map(friend => {
-            const chatId = [user.uid, friend.uid].sort().join('_');
-            const q = query(
-                collection(db, 'chats', chatId, 'messages'),
-                orderBy('timestamp', 'desc'),
-                limit(20)
-            );
-
-            return onSnapshot(q, (snapshot) => {
-                const messages = snapshot.docs.map(doc => doc.data());
-                const lastMsg = messages[0];
-                const unreadCount = messages.filter(m => !m.seen && m.senderId === friend.uid).length;
-
-                setChatsData(prev => ({
-                    ...prev,
-                    [friend.uid]: {
-                        lastMessage: lastMsg,
-                        unreadCount: unreadCount
-                    }
-                }));
-            });
-        });
-        return () => unsubscribes.forEach(unsub => unsub());
-    }, [friends, user]);
-
-    // Set loading to false after initial data load
-    useEffect(() => {
-        if (friends.length > 0 && Object.keys(friendProfiles).length > 0) {
-            setInitialLoading(false);
-        }
-    }, [friends, friendProfiles]);
-
-    // Safety timeout to prevent infinite loading if no friends/data
-    useEffect(() => {
-        const timer = setTimeout(() => setInitialLoading(false), 2000);
-        return () => clearTimeout(timer);
-    }, []);
-
-    useEffect(() => {
-        const unsubscribes = friends.map(friend => {
-            const friendDocRef = doc(db, 'users', friend.uid);
-            return onSnapshot(friendDocRef, (docSnap) => {
-                if (docSnap.exists()) {
-                    setFriendProfiles(prev => ({
-                        ...prev,
-                        [friend.uid]: docSnap.data()
-                    }));
-                }
-            });
-        });
-        return () => unsubscribes.forEach(unsub => unsub());
-    }, [friends]);
-
-    useEffect(() => {
-        if (!user) return;
-        const q = query(collection(db, 'groups'), where('members', 'array-contains', user.uid));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            setGroups(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), type: 'group' })));
-        });
-        return unsubscribe;
-    }, [user]);
-
-    // Track group messages
-    useEffect(() => {
-        if (!user || !groups.length) return;
-
-        const unsubscribes = groups.map(group => {
-            const q = query(
-                collection(db, 'groups', group.id, 'messages'),
-                orderBy('timestamp', 'desc'),
-                limit(20)
-            );
-
-            return onSnapshot(q, (snapshot) => {
-                const messages = snapshot.docs.map(doc => doc.data());
-                const lastMsg = messages[0];
-                const unreadCount = messages.filter(m => !m.seen && m.senderId !== user.uid).length;
-
-                setGroupChatsData(prev => ({
-                    ...prev,
-                    [group.id]: {
-                        lastMessage: lastMsg,
-                        unreadCount: unreadCount
-                    }
-                }));
-            });
-        });
-        return () => unsubscribes.forEach(unsub => unsub());
-    }, [groups, user]);
 
     const friendsWithUpdatedData = friends.map(friend => ({
         ...friend,
@@ -1145,11 +1138,7 @@ function ConversationsList({ friends, user, profile, onSelectFriend, onOpenProfi
             </div>
 
             <div className="flex-1 overflow-y-auto">
-                {initialLoading ? (
-                    <div className="flex items-center justify-center h-full">
-                        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-                    </div>
-                ) : filteredConversations.length === 0 ? (
+                {filteredConversations.length === 0 ? (
                     <div className="p-8 text-center">
                         <p className="text-gray-500 text-sm">No conversations found</p>
                     </div>
