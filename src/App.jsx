@@ -12,6 +12,7 @@ import {
     doc,
     setDoc,
     getDoc,
+    getDocs,
     addDoc,
     onSnapshot,
     orderBy,
@@ -561,6 +562,10 @@ function CreateGroupModal({ user, friends, onClose }) {
 function GroupInfoModal({ group, user, onClose, onLeave }) {
     const [members, setMembers] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [editingName, setEditingName] = useState(false);
+    const [newGroupName, setNewGroupName] = useState(group.name);
+    const [showAddMember, setShowAddMember] = useState(false);
+    const [allFriends, setAllFriends] = useState([]);
 
     useEffect(() => {
         const fetchMembers = async () => {
@@ -581,18 +586,24 @@ function GroupInfoModal({ group, user, onClose, onLeave }) {
         fetchMembers();
     }, [group]);
 
-    const handleLeaveGroup = async () => {
-        if (!window.confirm('Are you sure you want to leave this group?')) return;
-        try {
-            const updatedMembers = group.members.filter(uid => uid !== user.uid);
-            await updateDoc(doc(db, 'groups', group.id), {
-                members: updatedMembers
-            });
-            onLeave();
-        } catch (err) {
-            console.error("Error leaving group:", err);
-        }
-    };
+    // Fetch user's friends for adding to group
+    useEffect(() => {
+        const fetchFriends = async () => {
+            try {
+                const friendsSnapshot = await getDocs(collection(db, 'users', user.uid, 'friends'));
+                const friendsData = await Promise.all(
+                    friendsSnapshot.docs.map(async (friendDoc) => {
+                        const friendData = friendDoc.data();
+                        return { uid: friendDoc.id, ...friendData };
+                    })
+                );
+                setAllFriends(friendsData);
+            } catch (err) {
+                console.error("Error fetching friends:", err);
+            }
+        };
+        fetchFriends();
+    }, [user]);
 
     const handleRemoveMember = async (memberUid) => {
         if (group.createdBy !== user.uid) {
@@ -608,12 +619,96 @@ function GroupInfoModal({ group, user, onClose, onLeave }) {
         if (!window.confirm('Remove this member from the group?')) return;
 
         try {
+            const memberName = members.find(m => m.uid === memberUid)?.displayName || 'Unknown';
             const updatedMembers = group.members.filter(uid => uid !== memberUid);
             await updateDoc(doc(db, 'groups', group.id), {
                 members: updatedMembers
             });
+
+            // Add system notification
+            await addDoc(collection(db, 'groups', group.id, 'messages'), {
+                type: 'system',
+                text: `${user.displayName || 'Someone'} removed ${memberName}`,
+                timestamp: serverTimestamp(),
+                senderId: user.uid
+            });
         } catch (err) {
             console.error("Error removing member:", err);
+        }
+    };;
+
+    const handleAddMember = async (newMemberUid) => {
+        if (group.members.includes(newMemberUid)) {
+            alert("This person is already in the group");
+            return;
+        }
+
+        try {
+            const memberName = allFriends.find(f => f.uid === newMemberUid)?.displayName || 'Unknown';
+            const updatedMembers = [...group.members, newMemberUid];
+            await updateDoc(doc(db, 'groups', group.id), {
+                members: updatedMembers
+            });
+
+            // Add system notification
+            await addDoc(collection(db, 'groups', group.id, 'messages'), {
+                type: 'system',
+                text: `${user.displayName || 'Someone'} added ${memberName}`,
+                timestamp: serverTimestamp(),
+                senderId: user.uid
+            });
+
+            setShowAddMember(false);
+        } catch (err) {
+            console.error("Error adding member:", err);
+        }
+    };
+
+    const handleUpdateGroupName = async () => {
+        if (!newGroupName.trim()) return;
+        if (newGroupName.trim() === group.name) {
+            setEditingName(false);
+            return;
+        }
+
+        try {
+            await updateDoc(doc(db, 'groups', group.id), {
+                name: newGroupName.trim()
+            });
+
+            // Add system notification
+            await addDoc(collection(db, 'groups', group.id, 'messages'), {
+                type: 'system',
+                text: `${user.displayName || 'Someone'} changed the group name to "${newGroupName.trim()}"`,
+                timestamp: serverTimestamp(),
+                senderId: user.uid
+            });
+
+            setEditingName(false);
+        } catch (err) {
+            console.error("Error updating group name:", err);
+        }
+    };
+
+    const handleLeaveGroup = async () => {
+        if (!window.confirm('Are you sure you want to leave this group?')) return;
+        try {
+            const updatedMembers = group.members.filter(uid => uid !== user.uid);
+            await updateDoc(doc(db, 'groups', group.id), {
+                members: updatedMembers
+            });
+
+            // Add system notification
+            await addDoc(collection(db, 'groups', group.id, 'messages'), {
+                type: 'system',
+                text: `${user.displayName || 'Someone'} left the group`,
+                timestamp: serverTimestamp(),
+                senderId: user.uid
+            });
+
+            onLeave();
+        } catch (err) {
+            console.error("Error leaving group:", err);
         }
     };
 
@@ -632,14 +727,85 @@ function GroupInfoModal({ group, user, onClose, onLeave }) {
                         <div className="w-20 h-20 rounded-full bg-gray-800 flex items-center justify-center">
                             <Users size={32} className="text-gray-400" />
                         </div>
-                        <div className="text-center">
-                            <h3 className="text-xl font-bold text-white">{group.name}</h3>
+                        <div className="text-center w-full">
+                            {editingName ? (
+                                <div className="flex items-center gap-2 justify-center">
+                                    <Input
+                                        value={newGroupName}
+                                        onChange={(e) => setNewGroupName(e.target.value)}
+                                        className="text-sm max-w-xs"
+                                        placeholder="Group name"
+                                    />
+                                    <button
+                                        onClick={handleUpdateGroupName}
+                                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-white text-xs font-medium"
+                                    >
+                                        Save
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setEditingName(false);
+                                            setNewGroupName(group.name);
+                                        }}
+                                        className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg text-white text-xs font-medium"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-2 justify-center">
+                                    <h3 className="text-xl font-bold text-white">{group.name}</h3>
+                                    <button
+                                        onClick={() => setEditingName(true)}
+                                        className="p-1 text-gray-400 hover:text-white transition-colors"
+                                    >
+                                        <Edit2 size={16} />
+                                    </button>
+                                </div>
+                            )}
                             <p className="text-sm text-gray-500">{group.members?.length || 0} members</p>
                         </div>
                     </div>
 
                     <div>
-                        <h4 className="text-sm font-medium text-gray-400 mb-3">Members</h4>
+                        <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-sm font-medium text-gray-400">Members</h4>
+                            <button
+                                onClick={() => setShowAddMember(!showAddMember)}
+                                className="px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-600 rounded-lg text-blue-400 text-xs font-medium flex items-center gap-1 transition-colors"
+                            >
+                                <Plus size={14} />
+                                Add Member
+                            </button>
+                        </div>
+                        {showAddMember && (
+                            <div className="mb-3 p-3 bg-gray-800 rounded-xl border border-gray-700">
+                                <p className="text-xs text-gray-400 mb-2">Select a friend to add:</p>
+                                <div className="space-y-2 max-h-40 overflow-y-auto">
+                                    {allFriends.filter(f => !group.members.includes(f.uid)).map(friend => (
+                                        <div
+                                            key={friend.uid}
+                                            onClick={() => handleAddMember(friend.uid)}
+                                            className="flex items-center gap-2 p-2 bg-gray-900 hover:bg-gray-700 rounded-lg cursor-pointer transition-colors"
+                                        >
+                                            <div className="w-8 h-8 rounded-full bg-gray-700 overflow-hidden">
+                                                {friend.photoURL ? (
+                                                    <img src={friend.photoURL} alt={friend.displayName} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-gray-400 font-semibold text-xs">
+                                                        {friend.displayName?.[0]?.toUpperCase() || 'U'}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <span className="text-white text-sm">{friend.displayName || 'Unknown'}</span>
+                                        </div>
+                                    ))}
+                                    {allFriends.filter(f => !group.members.includes(f.uid)).length === 0 && (
+                                        <p className="text-xs text-gray-500 text-center py-2">All friends are already in this group</p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                         {loading ? (
                             <div className="flex justify-center py-4">
                                 <Loader2 className="w-6 h-6 animate-spin text-gray-500" />
@@ -1364,6 +1530,17 @@ function ChatView({ user, friend, onBack }) {
                 ) : (
                     <div className="space-y-1">
                         {messages.map((msg, idx) => {
+                            // Render system messages differently
+                            if (msg.type === 'system') {
+                                return (
+                                    <div key={msg.id} className="flex justify-center my-2">
+                                        <p className="text-xs text-gray-500 bg-gray-800/50 px-3 py-1.5 rounded-full">
+                                            {msg.text}
+                                        </p>
+                                    </div>
+                                );
+                            }
+
                             const isMe = msg.senderId === user.uid;
                             const prevMsg = messages[idx - 1];
                             const showAvatar = !prevMsg || prevMsg.senderId !== msg.senderId;
