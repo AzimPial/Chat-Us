@@ -118,8 +118,13 @@ export default function App() {
         });
 
         // Request notification permission
-        if (Notification.permission === 'default') {
-            Notification.requestPermission();
+        // Request notification permission (safely)
+        if ('Notification' in window && Notification.permission === 'default') {
+            try {
+                Notification.requestPermission().catch(err => console.log("Notification permission error:", err));
+            } catch (e) {
+                console.log("Notification API error:", e);
+            }
         }
 
         return unsubscribe;
@@ -150,15 +155,20 @@ export default function App() {
                     const isAppHidden = document.hidden;
 
                     if (!isChatActive || isAppHidden) {
-                        if (Notification.permission === 'granted') {
-                            new Notification(`New message from ${friend.displayName}`, {
-                                body: message.text || (message.image ? 'Sent an image' : 'New message'),
-                                icon: '/vite.svg' // You might want to use a better icon
-                            }).onclick = () => {
-                                window.focus();
-                                setActiveChat(friend);
-                                setView('chat');
-                            };
+                        if ('Notification' in window && Notification.permission === 'granted') {
+                            try {
+                                const notification = new Notification(`New message from ${friend.displayName}`, {
+                                    body: message.text || (message.image ? 'Sent an image' : 'New message'),
+                                    icon: '/vite.svg'
+                                });
+                                notification.onclick = () => {
+                                    window.focus();
+                                    setActiveChat(friend);
+                                    setView('chat');
+                                };
+                            } catch (e) {
+                                console.log("Notification creation error:", e);
+                            }
                         }
                     }
                 }
