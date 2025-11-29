@@ -1419,15 +1419,21 @@ function ChatView({ user, profile, friend, onBack }) {
     };
 
     useEffect(() => {
-        if (isGroup) return; // TODO: Handle group read receipts differently or skip for now
-        const chatId = [user.uid, friend.uid].sort().join('_');
+        if (!messages.length) return;
+
         const unreadMessages = messages.filter(msg =>
-            msg.senderId === friend.uid && !msg.seen
+            msg.senderId !== user.uid && !msg.seen
         );
 
         unreadMessages.forEach(async (msg) => {
             try {
-                const msgRef = doc(db, 'chats', chatId, 'messages', msg.id);
+                let msgRef;
+                if (isGroup) {
+                    msgRef = doc(db, 'groups', friend.id, 'messages', msg.id);
+                } else {
+                    const chatId = [user.uid, friend.uid].sort().join('_');
+                    msgRef = doc(db, 'chats', chatId, 'messages', msg.id);
+                }
                 await updateDoc(msgRef, { seen: true });
             } catch (err) {
                 console.error("Failed to update message status", err);
