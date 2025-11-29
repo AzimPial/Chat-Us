@@ -69,7 +69,6 @@ const Button = ({ children, onClick, disabled, variant = "primary", className = 
     >
         {children}
     </button>
-    </button >
 );
 
 class ErrorBoundary extends React.Component {
@@ -1401,5 +1400,6 @@ export default function App() {
                     </form>
                 </div>
             </div>
-            );
+        </ErrorBoundary>
+    );
 }
