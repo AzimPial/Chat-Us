@@ -116,8 +116,57 @@ export default function App() {
         const unsubscribe = onSnapshot(q, (snapshot) => {
             setFriends(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
         });
+
+        // Request notification permission
+        if (Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+
         return unsubscribe;
     }, [user]);
+
+    // Notification Listener
+    useEffect(() => {
+        if (!user || !friends.length) return;
+
+        const unsubscribes = friends.map(friend => {
+            const chatId = [user.uid, friend.uid].sort().join('_');
+            const q = query(
+                collection(db, 'chats', chatId, 'messages'),
+                orderBy('timestamp', 'desc'),
+                limit(1)
+            );
+
+            return onSnapshot(q, (snapshot) => {
+                if (snapshot.empty) return;
+                const message = snapshot.docs[0].data();
+
+                // Check if message is new (within last 2 seconds to avoid spam on load)
+                const isRecent = message.timestamp?.toMillis() > Date.now() - 2000;
+
+                if (isRecent && message.senderId !== user.uid) {
+                    // Check if we should notify
+                    const isChatActive = activeChat?.uid === friend.uid && view === 'chat';
+                    const isAppHidden = document.hidden;
+
+                    if (!isChatActive || isAppHidden) {
+                        if (Notification.permission === 'granted') {
+                            new Notification(`New message from ${friend.displayName}`, {
+                                body: message.text || (message.image ? 'Sent an image' : 'New message'),
+                                icon: '/vite.svg' // You might want to use a better icon
+                            }).onclick = () => {
+                                window.focus();
+                                setActiveChat(friend);
+                                setView('chat');
+                            };
+                        }
+                    }
+                }
+            });
+        });
+
+        return () => unsubscribes.forEach(unsub => unsub());
+    }, [user, friends, activeChat, view]);
 
     const handleLogout = async () => {
         await signOut(auth);
@@ -308,10 +357,9 @@ function ProfileSetup({ user, profile, onSave, onBack }) {
                 {onBack && profile?.displayName && (
                     <button
                         onClick={onBack}
-                        className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+                        className="absolute top-4 left-4 p-2 text-gray-400 hover:text-white transition-colors rounded-full hover:bg-gray-800"
                     >
-                        <ChevronLeft size={20} />
-                        Back
+                        <ChevronLeft size={24} />
                     </button>
                 )}
                 <div className="text-center">
@@ -711,17 +759,10 @@ function ConversationsList({ friends, user, profile, onSelectFriend, onOpenProfi
                                 </div>
                             ) : (
                                 <div className="flex items-center gap-2">
-                                    <h2 className="text-xl font-bold text-white">{profile?.displayName || 'User'}</h2>
-                                    <button
-                                        onClick={() => setEditingName(true)}
-                                        className="p-1 text-gray-400 hover:text-white transition-colors"
-                                        title="Edit Name"
-                                    >
-                                        <Edit2 size={16} />
-                                    </button>
+                                    <h2 className="text-xl font-bold text-white">Chats</h2>
                                 </div>
                             )}
-                            <p className="text-sm text-gray-500">Your chats</p>
+                            <p className="text-sm text-gray-500">Recent conversations</p>
                         </div>
                     </div>
                     <div className="flex gap-2">
