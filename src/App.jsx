@@ -259,6 +259,7 @@ export default function App() {
                 {view === 'chat' && activeChat ? (
                     <ChatView
                         user={user}
+                        profile={profile}
                         friend={activeChat}
                         onBack={() => {
                             setView('conversations');
@@ -1343,7 +1344,7 @@ function FriendSearchCard({ user }) {
     );
 }
 
-function ChatView({ user, friend, onBack }) {
+function ChatView({ user, profile, friend, onBack }) {
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const [uploading, setUploading] = useState(false);
@@ -1390,7 +1391,7 @@ function ChatView({ user, friend, onBack }) {
                 imageUrl,
                 type: imageUrl ? 'image' : 'text',
                 senderId: user.uid,
-                senderName: user.displayName || 'Unknown', // Add sender name for groups
+                senderName: profile?.displayName || 'Unknown', // Add sender name for groups
                 timestamp: serverTimestamp(),
                 seen: false
             });
