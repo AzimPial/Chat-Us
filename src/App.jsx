@@ -365,6 +365,7 @@ function ProfileSetup({ user, profile, onSave, onBack }) {
     const [image, setImage] = useState(null);
     const [preview, setPreview] = useState(profile?.photoURL || null);
     const [saving, setSaving] = useState(false);
+    const [editingName, setEditingName] = useState(!profile?.displayName);
     const fileInputRef = useRef(null);
 
     const handleImageChange = (e) => {
@@ -394,6 +395,7 @@ function ProfileSetup({ user, profile, onSave, onBack }) {
                 lastSeen: serverTimestamp()
             }, { merge: true });
 
+            setEditingName(false);
             onSave();
         } catch (error) {
             console.error("Error saving profile:", error);
@@ -408,7 +410,7 @@ function ProfileSetup({ user, profile, onSave, onBack }) {
                 {onBack && profile?.displayName && (
                     <button
                         onClick={onBack}
-                        className="absolute top-4 left-4 p-2 text-gray-400 hover:text-white transition-colors rounded-full hover:bg-gray-800"
+                        className="fixed top-0 left-0 p-3 text-gray-400 hover:text-white transition-colors rounded-full hover:bg-gray-800 z-50 m-4"
                     >
                         <ChevronLeft size={24} />
                     </button>
@@ -447,16 +449,49 @@ function ProfileSetup({ user, profile, onSave, onBack }) {
 
                     <div>
                         <label className="block text-sm font-medium text-gray-400 mb-2">Display Name</label>
-                        <Input
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            placeholder="Enter your name"
-                        />
+                        {editingName ? (
+                            <div className="space-y-3">
+                                <Input
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                    placeholder="Enter your name"
+                                    autoFocus
+                                />
+                                <div className="flex gap-2">
+                                    <Button onClick={handleSave} disabled={saving || !name.trim()} className="flex-1">
+                                        {saving ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Save'}
+                                    </Button>
+                                    {profile?.displayName && (
+                                        <button
+                                            onClick={() => {
+                                                setName(profile.displayName);
+                                                setEditingName(false);
+                                            }}
+                                            className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-medium transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex items-center justify-between p-3 bg-gray-800 rounded-xl">
+                                <span className="text-white font-medium">{name}</span>
+                                <button
+                                    onClick={() => setEditingName(true)}
+                                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                                >
+                                    Edit
+                                </button>
+                            </div>
+                        )}
                     </div>
 
-                    <Button onClick={handleSave} disabled={saving || !name.trim()}>
-                        {saving ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Save Profile'}
-                    </Button>
+                    {!editingName && image && (
+                        <Button onClick={handleSave} disabled={saving}>
+                            {saving ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Save Photo'}
+                        </Button>
+                    )}
                 </div>
             </div>
         </div>
