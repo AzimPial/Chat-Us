@@ -560,7 +560,7 @@ function CreateGroupModal({ user, friends, onClose }) {
     );
 }
 
-function GroupInfoModal({ group, user, onClose, onLeave }) {
+function GroupInfoModal({ group, user, profile, onClose, onLeave }) {
     const [members, setMembers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [editingName, setEditingName] = useState(false);
@@ -629,7 +629,7 @@ function GroupInfoModal({ group, user, onClose, onLeave }) {
             // Add system notification
             await addDoc(collection(db, 'groups', group.id, 'messages'), {
                 type: 'system',
-                text: `${user.displayName || 'Someone'} removed ${memberName}`,
+                text: `${profile?.displayName || 'Someone'} removed ${memberName}`,
                 timestamp: serverTimestamp(),
                 senderId: user.uid
             });
@@ -654,7 +654,7 @@ function GroupInfoModal({ group, user, onClose, onLeave }) {
             // Add system notification
             await addDoc(collection(db, 'groups', group.id, 'messages'), {
                 type: 'system',
-                text: `${user.displayName || 'Someone'} added ${memberName}`,
+                text: `${profile?.displayName || 'Someone'} added ${memberName}`,
                 timestamp: serverTimestamp(),
                 senderId: user.uid
             });
@@ -680,7 +680,7 @@ function GroupInfoModal({ group, user, onClose, onLeave }) {
             // Add system notification
             await addDoc(collection(db, 'groups', group.id, 'messages'), {
                 type: 'system',
-                text: `${user.displayName || 'Someone'} changed the group name to "${newGroupName.trim()}"`,
+                text: `${profile?.displayName || 'Someone'} changed the group name to "${newGroupName.trim()}"`,
                 timestamp: serverTimestamp(),
                 senderId: user.uid
             });
@@ -702,7 +702,7 @@ function GroupInfoModal({ group, user, onClose, onLeave }) {
             // Add system notification
             await addDoc(collection(db, 'groups', group.id, 'messages'), {
                 type: 'system',
-                text: `${user.displayName || 'Someone'} left the group`,
+                text: `${profile?.displayName || 'Someone'} left the group`,
                 timestamp: serverTimestamp(),
                 senderId: user.uid
             });
@@ -1496,6 +1496,7 @@ function ChatView({ user, profile, friend, onBack }) {
                 <GroupInfoModal
                     group={friend}
                     user={user}
+                    profile={profile}
                     onClose={() => setShowGroupInfo(false)}
                     onLeave={() => {
                         setShowGroupInfo(false);
