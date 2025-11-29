@@ -1350,6 +1350,7 @@ function ChatView({ user, profile, friend, onBack }) {
     const [uploading, setUploading] = useState(false);
     const [showGroupInfo, setShowGroupInfo] = useState(false);
     const [fullScreenImage, setFullScreenImage] = useState(null);
+    const [messageSenders, setMessageSenders] = useState({});
     const messagesEndRef = useRef(null);
     const imageInputRef = useRef(null);
 
@@ -1377,6 +1378,35 @@ function ChatView({ user, profile, friend, onBack }) {
 
         return unsubscribe;
     }, [user, friend, isGroup]);
+
+    // Fetch sender profiles for group messages
+    useEffect(() => {
+        if (!isGroup || !messages.length) return;
+
+        const fetchSenders = async () => {
+            const senderIds = [...new Set(messages.map(m => m.senderId).filter(Boolean))];
+            const senderData = {};
+
+            for (const uid of senderIds) {
+                if (messageSenders[uid]) {
+                    senderData[uid] = messageSenders[uid];
+                    continue;
+                }
+                try {
+                    const userDoc = await getDoc(doc(db, 'users', uid));
+                    if (userDoc.exists()) {
+                        senderData[uid] = userDoc.data();
+                    }
+                } catch (err) {
+                    console.error("Error fetching sender:", err);
+                }
+            }
+
+            setMessageSenders(prev => ({ ...prev, ...senderData }));
+        };
+
+        fetchSenders();
+    }, [messages, isGroup]);
 
     const sendMessage = async (text = '', imageUrl = null) => {
         if (!text.trim() && !imageUrl) return;
@@ -1574,7 +1604,9 @@ function ChatView({ user, profile, friend, onBack }) {
 
                                     <div className="flex flex-col items-end max-w-[70%]">
                                         {isGroup && !isMe && showAvatar && (
-                                            <span className="text-[10px] text-gray-500 mr-auto ml-1 mb-0.5">{msg.senderName}</span>
+                                            <span className="text-[10px] text-gray-500 mr-auto ml-1 mb-0.5">
+                                                {messageSenders[msg.senderId]?.displayName || msg.senderName || 'Unknown'}
+                                            </span>
                                         )}
                                         <div
                                             className={`${isMe
