@@ -905,6 +905,7 @@ function ConversationsList({ friends, user, profile, onSelectFriend, onOpenProfi
 
     const [chatsData, setChatsData] = useState({});
     const [groupChatsData, setGroupChatsData] = useState({});
+    const [initialLoading, setInitialLoading] = useState(true);
 
     useEffect(() => {
         if (!user || !friends.length) return;
@@ -933,6 +934,19 @@ function ConversationsList({ friends, user, profile, onSelectFriend, onOpenProfi
         });
         return () => unsubscribes.forEach(unsub => unsub());
     }, [friends, user]);
+
+    // Set loading to false after initial data load
+    useEffect(() => {
+        if (friends.length > 0 && Object.keys(friendProfiles).length > 0) {
+            setInitialLoading(false);
+        }
+    }, [friends, friendProfiles]);
+
+    // Safety timeout to prevent infinite loading if no friends/data
+    useEffect(() => {
+        const timer = setTimeout(() => setInitialLoading(false), 2000);
+        return () => clearTimeout(timer);
+    }, []);
 
     useEffect(() => {
         const unsubscribes = friends.map(friend => {
@@ -1131,7 +1145,11 @@ function ConversationsList({ friends, user, profile, onSelectFriend, onOpenProfi
             </div>
 
             <div className="flex-1 overflow-y-auto">
-                {filteredConversations.length === 0 ? (
+                {initialLoading ? (
+                    <div className="flex items-center justify-center h-full">
+                        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+                    </div>
+                ) : filteredConversations.length === 0 ? (
                     <div className="p-8 text-center">
                         <p className="text-gray-500 text-sm">No conversations found</p>
                     </div>
