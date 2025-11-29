@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
@@ -992,25 +992,30 @@ function ConversationsList({ friends, user, profile, onSelectFriend, onOpenProfi
         type: 'user'
     }));
 
-    // Combine and sort all conversations by latest message
-    const allConversations = [
-        ...friendsWithUpdatedData.map(f => ({
-            ...f,
-            lastMessageTime: chatsData[f.uid]?.lastMessage?.timestamp
-        })),
-        ...groups.map(g => ({
-            ...g,
-            lastMessageTime: groupChatsData[g.id]?.lastMessage?.timestamp
-        }))
-    ].sort((a, b) => {
-        const timeA = a.lastMessageTime?.toMillis() || 0;
-        const timeB = b.lastMessageTime?.toMillis() || 0;
-        return timeB - timeA; // Most recent first
-    });
+    // Combine and sort all conversations by latest message - memoized to prevent re-sorting on every render
+    const allConversations = useMemo(() => {
+        return [
+            ...friendsWithUpdatedData.map(f => ({
+                ...f,
+                lastMessageTime: chatsData[f.uid]?.lastMessage?.timestamp
+            })),
+            ...groups.map(g => ({
+                ...g,
+                lastMessageTime: groupChatsData[g.id]?.lastMessage?.timestamp
+            }))
+        ].sort((a, b) => {
+            const timeA = a.lastMessageTime?.toMillis() || 0;
+            const timeB = b.lastMessageTime?.toMillis() || 0;
+            return timeB - timeA; // Most recent first
+        });
+    }, [friendsWithUpdatedData, groups, chatsData, groupChatsData]);
 
-    const filteredConversations = allConversations.filter(conv =>
-        (conv.name || conv.displayName)?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredConversations = useMemo(() => {
+        if (!searchQuery) return allConversations;
+        return allConversations.filter(conv =>
+            (conv.name || conv.displayName)?.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+    }, [allConversations, searchQuery]);
 
     if (showCreateGroup) {
         return <CreateGroupModal user={user} friends={friendsWithUpdatedData} onClose={() => setShowCreateGroup(false)} />;
