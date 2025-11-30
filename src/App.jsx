@@ -1533,17 +1533,14 @@ function ChatView({ user, profile, friend, onBack }) {
 
     // Separate effect for scrolling
     useLayoutEffect(() => {
-        if (messages.length > 0 && chatContainerRef.current) {
+        if (messages.length > 0 && messagesEndRef.current) {
             if (isInitialLoad.current) {
-                // Instant scroll on first load - directly set scrollTop
-                chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+                // Instant scroll on first load - use scrollIntoView with block end
+                messagesEndRef.current.scrollIntoView({ block: 'end' });
                 isInitialLoad.current = false;
             } else if (messages.length > prevMessageCount.current) {
                 // Smooth scroll for new messages
-                chatContainerRef.current.scrollTo({
-                    top: chatContainerRef.current.scrollHeight,
-                    behavior: 'smooth'
-                });
+                messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
             }
             prevMessageCount.current = messages.length;
         }
