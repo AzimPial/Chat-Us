@@ -338,7 +338,9 @@ export default function App() {
     if (view === 'profile') {
         return (
             <ErrorBoundary>
-                <ProfileSetup user={user} profile={profile} onSave={() => setView('conversations')} onBack={() => setView('conversations')} />
+                <div className={isDarkMode ? 'dark' : ''}>
+                    <ProfileSetup user={user} profile={profile} onSave={() => setView('conversations')} onBack={() => setView('conversations')} />
+                </div>
             </ErrorBoundary>
         );
     }
