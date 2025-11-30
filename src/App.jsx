@@ -47,7 +47,9 @@ import {
     Plus,
     Edit2,
     UserMinus,
-    Settings
+    Settings,
+    Sun,
+    Moon
 } from 'lucide-react';
 
 const Input = ({ value, onChange, placeholder, type = "text", className = "" }) => (
@@ -123,6 +125,22 @@ export default function App() {
     const [groupChatsData, setGroupChatsData] = useState({});
     const [friendProfiles, setFriendProfiles] = useState({});
     const [groups, setGroups] = useState([]);
+    const [isDarkMode, setIsDarkMode] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('theme');
+            return saved ? saved === 'dark' : true;
+        }
+        return true;
+    });
+
+    const toggleTheme = () => {
+        setIsDarkMode(prev => {
+            const newTheme = !prev;
+            localStorage.setItem('theme', newTheme ? 'dark' : 'light');
+            return newTheme;
+        });
+    };
+
 
     useEffect(() => {
         setPersistence(auth, browserLocalPersistence).catch(console.error);
@@ -327,44 +345,48 @@ export default function App() {
 
     return (
         <ErrorBoundary>
-            <div className="h-screen bg-black flex flex-col md:flex-row max-w-7xl mx-auto overflow-hidden">
-                {(view === 'conversations' || window.innerWidth >= 768) && (
-                    <div className={`${view === 'chat' && window.innerWidth < 768 ? 'hidden' : ''} md:w-96 w-full border-r border-gray-800 flex flex-col bg-black`}>
-                        <ConversationsList
-                            friends={friends}
+            <div className={isDarkMode ? 'dark' : ''}>
+                <div className="h-screen bg-white dark:bg-black flex flex-col md:flex-row max-w-7xl mx-auto overflow-hidden transition-colors duration-200">
+                    {(view === 'conversations' || window.innerWidth >= 768) && (
+                        <div className={`${view === 'chat' && window.innerWidth < 768 ? 'hidden' : ''} md:w-96 w-full border-r border-gray-200 dark:border-gray-800 flex flex-col bg-white dark:bg-black transition-colors duration-200`}>
+                            <ConversationsList
+                                friends={friends}
+                                user={user}
+                                profile={profile}
+                                chatsData={chatsData}
+                                groupChatsData={groupChatsData}
+                                friendProfiles={friendProfiles}
+                                groups={groups}
+                                onSelectFriend={(friend) => {
+                                    setActiveChat(friend);
+                                    setView('chat');
+                                }}
+                                onOpenProfile={() => setView('profile')}
+                                onLogout={handleLogout}
+                                isDarkMode={isDarkMode}
+                                toggleTheme={toggleTheme}
+                            />
+                        </div>
+                    )}
+
+                    {view === 'chat' && activeChat ? (
+                        <ChatView
                             user={user}
                             profile={profile}
-                            chatsData={chatsData}
-                            groupChatsData={groupChatsData}
-                            friendProfiles={friendProfiles}
-                            groups={groups}
-                            onSelectFriend={(friend) => {
-                                setActiveChat(friend);
-                                setView('chat');
+                            friend={activeChat}
+                            onBack={() => {
+                                setView('conversations');
+                                setActiveChat(null);
                             }}
-                            onOpenProfile={() => setView('profile')}
-                            onLogout={handleLogout}
                         />
-                    </div>
-                )}
-
-                {view === 'chat' && activeChat ? (
-                    <ChatView
-                        user={user}
-                        profile={profile}
-                        friend={activeChat}
-                        onBack={() => {
-                            setView('conversations');
-                            setActiveChat(null);
-                        }}
-                    />
-                ) : (
-                    <div className="hidden md:flex flex-1 items-center justify-center bg-black">
-                        <div className="text-center text-gray-600">
-                            <p className="text-lg">Select a conversation</p>
+                    ) : (
+                        <div className="hidden md:flex flex-1 items-center justify-center bg-black">
+                            <div className="text-center text-gray-600">
+                                <p className="text-lg">Select a conversation</p>
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
         </ErrorBoundary>
     );
@@ -502,13 +524,13 @@ function ProfileSetup({ user, profile, onSave, onBack }) {
 
     if (showAddFriend) {
         return (
-            <div className="min-h-screen bg-black flex items-center justify-center p-4">
-                <div className="w-full max-w-md bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden flex flex-col h-[600px]">
-                    <div className="px-4 py-3 border-b border-gray-800 flex items-center gap-3">
-                        <button onClick={() => setShowAddFriend(false)} className="text-gray-400 hover:text-white">
+            <div className="min-h-screen bg-white dark:bg-black flex items-center justify-center p-4 transition-colors">
+                <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden flex flex-col h-[600px] transition-colors">
+                    <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center gap-3">
+                        <button onClick={() => setShowAddFriend(false)} className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
                             <ChevronLeft size={24} />
                         </button>
-                        <h2 className="text-xl font-bold text-white">Add Friend</h2>
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Add Friend</h2>
                     </div>
                     <div className="p-4 overflow-y-auto flex-1">
                         <FriendSearchCard user={user} />
@@ -519,26 +541,26 @@ function ProfileSetup({ user, profile, onSave, onBack }) {
     }
 
     return (
-        <div className="min-h-screen bg-black flex items-center justify-center p-4">
+        <div className="min-h-screen bg-white dark:bg-black flex items-center justify-center p-4 transition-colors">
             <div className="w-full max-w-md space-y-6">
                 {onBack && profile?.displayName && (
                     <button
                         onClick={onBack}
-                        className="fixed top-0 left-0 p-3 text-gray-400 hover:text-white transition-colors rounded-full hover:bg-gray-800 z-50 m-4"
+                        className="fixed top-0 left-0 p-3 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 z-50 m-4"
                     >
                         <ChevronLeft size={24} />
                     </button>
                 )}
                 <div className="text-center">
-                    <h1 className="text-3xl font-bold text-white mb-2">Profile Setup</h1>
-                    <p className="text-gray-400">Customize your profile</p>
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Profile Setup</h1>
+                    <p className="text-gray-500 dark:text-gray-400">Customize your profile</p>
                 </div>
 
-                <div className="bg-gray-900 rounded-2xl p-8 border border-gray-800 space-y-6">
+                <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 border border-gray-200 dark:border-gray-800 space-y-6 transition-colors">
                     <div className="flex flex-col items-center gap-4">
                         <div
                             onClick={() => fileInputRef.current?.click()}
-                            className="relative w-24 h-24 rounded-full bg-gray-800 cursor-pointer overflow-hidden group border-2 border-gray-700 hover:border-gray-500 transition-colors"
+                            className="relative w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-800 cursor-pointer overflow-hidden group border-2 border-gray-300 dark:border-gray-700 hover:border-gray-500 transition-colors"
                         >
                             {preview ? (
                                 <img src={preview} alt="Profile" className="w-full h-full object-cover" />
@@ -589,8 +611,8 @@ function ProfileSetup({ user, profile, onSave, onBack }) {
                                 </div>
                             </div>
                         ) : (
-                            <div className="flex items-center justify-between p-3 bg-gray-800 rounded-xl">
-                                <span className="text-white font-medium">{name}</span>
+                            <div className="flex items-center justify-between p-3 bg-gray-100 dark:bg-gray-800 rounded-xl transition-colors">
+                                <span className="text-gray-900 dark:text-white font-medium">{name}</span>
                                 <button
                                     onClick={() => setEditingName(true)}
                                     className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
@@ -602,16 +624,16 @@ function ProfileSetup({ user, profile, onSave, onBack }) {
                     </div>
 
 
-                    <div className="pt-4 border-t border-gray-800">
+                    <div className="pt-4 border-t border-gray-200 dark:border-gray-800">
                         <button
                             onClick={() => setShowAddFriend(true)}
-                            className="w-full p-4 bg-gray-800 hover:bg-gray-700 rounded-xl flex items-center justify-between group transition-colors"
+                            className="w-full p-4 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl flex items-center justify-between group transition-colors"
                         >
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:bg-blue-500/20 transition-colors">
                                     <Plus size={20} />
                                 </div>
-                                <span className="text-white font-medium">Add New Friend</span>
+                                <span className="text-gray-900 dark:text-white font-medium">Add New Friend</span>
                             </div>
                             <ChevronLeft size={20} className="text-gray-500 rotate-180" />
                         </button>
@@ -663,26 +685,27 @@ function CreateGroupModal({ user, friends, onClose }) {
 
     return (
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-            <div className="bg-gray-900 w-full max-w-md rounded-2xl border border-gray-800 flex flex-col max-h-[80vh]">
-                <div className="p-4 border-b border-gray-800 flex items-center justify-between">
-                    <h2 className="text-xl font-bold text-white">New Group</h2>
-                    <button onClick={onClose} className="text-gray-400 hover:text-white">
+            <div className="bg-white dark:bg-gray-900 w-full max-w-md rounded-2xl border border-gray-200 dark:border-gray-800 flex flex-col max-h-[80vh] transition-colors">
+                <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">New Group</h2>
+                    <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
                         <X size={24} />
                     </button>
                 </div>
 
                 <div className="p-4 space-y-4 flex-1 overflow-y-auto">
                     <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-2">Group Name</label>
+                        <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Group Name</label>
                         <Input
                             value={groupName}
                             onChange={(e) => setGroupName(e.target.value)}
                             placeholder="Enter group name"
+                            className="bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-2">Select Members</label>
+                        <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Select Members</label>
                         <div className="space-y-2">
                             {friends.map(friend => (
                                 <div
@@ -695,27 +718,27 @@ function CreateGroupModal({ user, friends, onClose }) {
                                 >
                                     <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${selectedMembers.includes(friend.uid)
                                         ? 'bg-blue-600 border-blue-600'
-                                        : 'border-gray-500'
+                                        : 'border-gray-400 dark:border-gray-500'
                                         }`}>
                                         {selectedMembers.includes(friend.uid) && <Check size={12} className="text-white" />}
                                     </div>
-                                    <div className="w-8 h-8 rounded-full bg-gray-700 overflow-hidden">
+                                    <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
                                         {friend.photoURL ? (
                                             <img src={friend.photoURL} alt={friend.displayName} className="w-full h-full object-cover" />
                                         ) : (
-                                            <div className="w-full h-full flex items-center justify-center text-gray-400 font-semibold text-xs">
+                                            <div className="w-full h-full flex items-center justify-center text-gray-500 dark:text-gray-400 font-semibold text-xs">
                                                 {friend.displayName?.[0]?.toUpperCase()}
                                             </div>
                                         )}
                                     </div>
-                                    <span className="text-white font-medium">{friend.displayName}</span>
+                                    <span className="text-gray-900 dark:text-white font-medium">{friend.displayName}</span>
                                 </div>
                             ))}
                         </div>
                     </div>
                 </div>
 
-                <div className="p-4 border-t border-gray-800">
+                <div className="p-4 border-t border-gray-200 dark:border-gray-800">
                     <Button onClick={handleCreate} disabled={creating || !groupName.trim() || selectedMembers.length === 0}>
                         {creating ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Create Group'}
                     </Button>
@@ -880,18 +903,18 @@ function GroupInfoModal({ group, user, profile, onClose, onLeave }) {
 
     return (
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-            <div className="bg-gray-900 w-full max-w-md rounded-2xl border border-gray-800 flex flex-col max-h-[80vh]">
-                <div className="p-4 border-b border-gray-800 flex items-center justify-between">
-                    <h2 className="text-xl font-bold text-white">Group Info</h2>
-                    <button onClick={onClose} className="text-gray-400 hover:text-white">
+            <div className="bg-white dark:bg-gray-900 w-full max-w-md rounded-2xl border border-gray-200 dark:border-gray-800 flex flex-col max-h-[80vh] transition-colors">
+                <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Group Info</h2>
+                    <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
                         <X size={24} />
                     </button>
                 </div>
 
                 <div className="p-4 space-y-4 flex-1 overflow-y-auto">
-                    <div className="flex flex-col items-center gap-3 pb-4 border-b border-gray-800">
-                        <div className="w-20 h-20 rounded-full bg-gray-800 flex items-center justify-center">
-                            <Users size={32} className="text-gray-400" />
+                    <div className="flex flex-col items-center gap-3 pb-4 border-b border-gray-200 dark:border-gray-800">
+                        <div className="w-20 h-20 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center">
+                            <Users size={32} className="text-gray-500 dark:text-gray-400" />
                         </div>
                         <div className="text-center w-full">
                             {editingName ? (
@@ -920,22 +943,22 @@ function GroupInfoModal({ group, user, profile, onClose, onLeave }) {
                                 </div>
                             ) : (
                                 <div className="flex items-center gap-2 justify-center">
-                                    <h3 className="text-xl font-bold text-white">{group.name}</h3>
+                                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">{group.name}</h3>
                                     <button
                                         onClick={() => setEditingName(true)}
-                                        className="p-1 text-gray-400 hover:text-white transition-colors"
+                                        className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
                                     >
                                         <Edit2 size={16} />
                                     </button>
                                 </div>
                             )}
-                            <p className="text-sm text-gray-500">{group.members?.length || 0} members</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">{group.members?.length || 0} members</p>
                         </div>
                     </div>
 
                     <div>
                         <div className="flex items-center justify-between mb-3">
-                            <h4 className="text-sm font-medium text-gray-400">Members</h4>
+                            <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Members</h4>
                             <button
                                 onClick={() => setShowAddMember(!showAddMember)}
                                 className="px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-600 rounded-lg text-blue-400 text-xs font-medium flex items-center gap-1 transition-colors"
@@ -945,14 +968,14 @@ function GroupInfoModal({ group, user, profile, onClose, onLeave }) {
                             </button>
                         </div>
                         {showAddMember && (
-                            <div className="mb-3 p-3 bg-gray-800 rounded-xl border border-gray-700">
-                                <p className="text-xs text-gray-400 mb-2">Select a friend to add:</p>
+                            <div className="mb-3 p-3 bg-gray-100 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Select a friend to add:</p>
                                 <div className="space-y-2 max-h-40 overflow-y-auto">
                                     {allFriends.filter(f => !group.members.includes(f.uid)).map(friend => (
                                         <div
                                             key={friend.uid}
                                             onClick={() => handleAddMember(friend.uid)}
-                                            className="flex items-center gap-2 p-2 bg-gray-900 hover:bg-gray-700 rounded-lg cursor-pointer transition-colors"
+                                            className="flex items-center gap-2 p-2 bg-white dark:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg cursor-pointer transition-colors"
                                         >
                                             <div className="w-8 h-8 rounded-full bg-gray-700 overflow-hidden">
                                                 {friend.photoURL ? (
@@ -1024,26 +1047,41 @@ function GroupInfoModal({ group, user, profile, onClose, onLeave }) {
     );
 }
 
-function SettingsModal({ onClose, onLogout }) {
+function SettingsModal({ onClose, onLogout, isDarkMode, toggleTheme }) {
     return (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-gray-900 w-full max-w-md rounded-2xl border border-gray-800 overflow-hidden">
-                <div className="p-4 border-b border-gray-800 flex items-center justify-between">
-                    <h2 className="text-xl font-bold text-white">Settings</h2>
-                    <button onClick={onClose} className="text-gray-400 hover:text-white">
+            <div className="bg-white dark:bg-gray-900 w-full max-w-md rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden transition-colors">
+                <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Settings</h2>
+                    <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
                         <X size={24} />
                     </button>
                 </div>
                 <div className="p-4 space-y-4">
                     <button
+                        onClick={toggleTheme}
+                        className="w-full p-4 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl flex items-center justify-between group transition-colors"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isDarkMode ? 'bg-purple-500/10 text-purple-500' : 'bg-yellow-500/10 text-yellow-500'}`}>
+                                {isDarkMode ? <Moon size={20} /> : <Sun size={20} />}
+                            </div>
+                            <span className="text-gray-900 dark:text-white font-medium">Dark Mode</span>
+                        </div>
+                        <div className={`w-12 h-6 rounded-full p-1 transition-colors ${isDarkMode ? 'bg-blue-600' : 'bg-gray-600'}`}>
+                            <div className={`w-4 h-4 rounded-full bg-white transition-transform ${isDarkMode ? 'translate-x-6' : 'translate-x-0'}`} />
+                        </div>
+                    </button>
+
+                    <button
                         onClick={onLogout}
-                        className="w-full p-4 bg-gray-800 hover:bg-gray-700 rounded-xl flex items-center justify-between group transition-colors"
+                        className="w-full p-4 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl flex items-center justify-between group transition-colors"
                     >
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 group-hover:bg-red-500/20 transition-colors">
                                 <LogOut size={20} />
                             </div>
-                            <span className="text-white font-medium">Log Out</span>
+                            <span className="text-gray-900 dark:text-white font-medium">Log Out</span>
                         </div>
                         <ChevronLeft size={20} className="text-gray-500 rotate-180" />
                     </button>
@@ -1053,7 +1091,7 @@ function SettingsModal({ onClose, onLogout }) {
     );
 }
 
-function ConversationsList({ friends, user, profile, chatsData, groupChatsData, friendProfiles, groups, onSelectFriend, onOpenProfile, onLogout }) {
+function ConversationsList({ friends, user, profile, chatsData, groupChatsData, friendProfiles, groups, onSelectFriend, onOpenProfile, onLogout, isDarkMode, toggleTheme }) {
     const [searchQuery, setSearchQuery] = useState('');
     const [showCreateGroup, setShowCreateGroup] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
@@ -1097,21 +1135,21 @@ function ConversationsList({ friends, user, profile, chatsData, groupChatsData, 
     }
 
     if (showSettings) {
-        return <SettingsModal onClose={() => setShowSettings(false)} onLogout={onLogout} />;
+        return <SettingsModal onClose={() => setShowSettings(false)} onLogout={onLogout} isDarkMode={isDarkMode} toggleTheme={toggleTheme} />;
     }
 
 
 
     return (
         <div className="flex flex-col h-full">
-            <div className="px-4 py-4 border-b border-gray-800">
+            <div className="px-4 py-4 border-b border-gray-200 dark:border-gray-800 transition-colors">
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-gray-800 overflow-hidden cursor-pointer" onClick={onOpenProfile}>
+                        <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-800 overflow-hidden cursor-pointer transition-colors" onClick={onOpenProfile}>
                             {profile?.photoURL ? (
                                 <img src={profile.photoURL} alt={profile.displayName} className="w-full h-full object-cover" />
                             ) : (
-                                <div className="w-full h-full flex items-center justify-center text-gray-400 font-semibold text-lg">
+                                <div className="w-full h-full flex items-center justify-center text-gray-500 dark:text-gray-400 font-semibold text-lg">
                                     {profile?.displayName?.[0]?.toUpperCase() || 'U'}
                                 </div>
                             )}
@@ -1154,7 +1192,7 @@ function ConversationsList({ friends, user, profile, chatsData, groupChatsData, 
                                 </div>
                             ) : (
                                 <div className="flex items-center gap-2">
-                                    <h2 className="text-xl font-bold text-white">Chats</h2>
+                                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Chats</h2>
                                 </div>
                             )}
                         </div>
@@ -1162,14 +1200,14 @@ function ConversationsList({ friends, user, profile, chatsData, groupChatsData, 
                     <div className="flex gap-2">
                         <button
                             onClick={() => setShowCreateGroup(true)}
-                            className="p-2 hover:bg-gray-800 rounded-full transition-colors text-gray-400 hover:text-white"
+                            className="p-2 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-full transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
                             title="New Group"
                         >
                             <Users size={20} />
                         </button>
                         <button
                             onClick={() => setShowSettings(true)}
-                            className="p-2 hover:bg-gray-800 rounded-full transition-colors text-gray-400 hover:text-white"
+                            className="p-2 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-full transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
                             title="Settings"
                         >
                             <Settings size={20} />
@@ -1183,7 +1221,7 @@ function ConversationsList({ friends, user, profile, chatsData, groupChatsData, 
                         placeholder="Search"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full bg-gray-900 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:bg-gray-800 transition-colors"
+                        className="w-full bg-gray-100 dark:bg-gray-900 rounded-xl pl-9 pr-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:bg-gray-200 dark:focus:bg-gray-800 transition-colors"
                     />
                 </div>
             </div>
@@ -1205,20 +1243,20 @@ function ConversationsList({ friends, user, profile, chatsData, groupChatsData, 
                             <div
                                 key={id}
                                 onClick={() => onSelectFriend(conv)}
-                                className="px-4 py-3 border-b border-gray-900 hover:bg-gray-900 cursor-pointer transition-colors flex items-center gap-3"
+                                className="px-4 py-3 border-b border-gray-100 dark:border-gray-900 hover:bg-gray-50 dark:hover:bg-gray-900 cursor-pointer transition-colors flex items-center gap-3"
                             >
-                                <div className="w-12 h-12 rounded-full bg-gray-800 overflow-hidden flex-shrink-0">
+                                <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-800 overflow-hidden flex-shrink-0">
                                     {photo ? (
                                         <img src={photo} alt={name} className="w-full h-full object-cover" />
                                     ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-gray-400 font-semibold text-lg">
+                                        <div className="w-full h-full flex items-center justify-center text-gray-500 dark:text-gray-400 font-semibold text-lg">
                                             {isGroup ? <Users size={20} /> : (name?.[0]?.toUpperCase() || 'U')}
                                         </div>
                                     )}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center justify-between mb-0.5">
-                                        <h3 className={`font-semibold truncate ${chatData?.unreadCount > 0 ? 'text-white font-bold' : 'text-white'}`}>{name || 'Unknown'}</h3>
+                                        <h3 className={`font-semibold truncate ${chatData?.unreadCount > 0 ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-900 dark:text-white'}`}>{name || 'Unknown'}</h3>
                                         {chatData?.lastMessage?.timestamp && (
                                             <span className={`text-xs ${chatData?.unreadCount > 0 ? 'text-blue-500 font-bold' : 'text-gray-500'}`}>
                                                 {new Date(chatData.lastMessage.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -1226,7 +1264,7 @@ function ConversationsList({ friends, user, profile, chatsData, groupChatsData, 
                                         )}
                                     </div>
                                     <div className="flex items-center justify-between">
-                                        <p className={`text-sm truncate pr-2 ${chatData?.unreadCount > 0 ? 'text-white font-bold' : 'text-gray-500'}`}>
+                                        <p className={`text-sm truncate pr-2 ${chatData?.unreadCount > 0 ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-500'}`}>
                                             {chatData?.lastMessage ? (
                                                 chatData.lastMessage.type === 'image' ? (
                                                     <span className="flex items-center gap-1"><Camera size={14} /> Photo</span>
@@ -1570,7 +1608,7 @@ function ChatView({ user, profile, friend, onBack }) {
     }, [messages, user, friend, isGroup]);
 
     return (
-        <div className="flex-1 flex flex-col bg-[#1a1a1a] h-full relative">
+        <div className="flex-1 flex flex-col bg-white dark:bg-black h-full relative transition-colors">
             {fullScreenImage && (
                 <div
                     className="absolute inset-0 z-50 bg-black/95 flex items-center justify-center p-4"
@@ -1603,22 +1641,22 @@ function ChatView({ user, profile, friend, onBack }) {
                 />
             )}
 
-            <div className="sticky top-0 z-10 px-4 py-3 border-b border-gray-800 bg-[#1a1a1a] flex items-center justify-between shadow-lg">
+            <div className="sticky top-0 z-10 px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-black flex items-center justify-between shadow-lg transition-colors">
                 <div className="flex items-center gap-3">
                     <button
                         onClick={onBack}
-                        className="p-1.5 -ml-1.5 text-gray-400 hover:text-gray-300 hover:bg-gray-800 rounded-full transition-all"
+                        className="p-1.5 -ml-1.5 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-all"
                     >
                         <ChevronLeft size={24} />
                     </button>
                     <div
-                        className="w-10 h-10 rounded-full bg-gray-800 overflow-hidden cursor-pointer"
+                        className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-800 overflow-hidden cursor-pointer"
                         onClick={() => isGroup && setShowGroupInfo(true)}
                     >
                         {friend.photoURL ? (
                             <img src={friend.photoURL} alt={friend.displayName} className="w-full h-full object-cover" />
                         ) : (
-                            <div className="w-full h-full flex items-center justify-center text-gray-400 font-semibold">
+                            <div className="w-full h-full flex items-center justify-center text-gray-500 dark:text-gray-400 font-semibold">
                                 {isGroup ? <Users size={20} /> : (friend.displayName?.[0]?.toUpperCase() || 'U')}
                             </div>
                         )}
@@ -1627,16 +1665,16 @@ function ChatView({ user, profile, friend, onBack }) {
                         className="cursor-pointer"
                         onClick={() => isGroup && setShowGroupInfo(true)}
                     >
-                        <h3 className="font-semibold text-white">{friend.displayName || friend.name || 'Unknown'}</h3>
+                        <h3 className="font-semibold text-gray-900 dark:text-white">{friend.displayName || friend.name || 'Unknown'}</h3>
                         <p className="text-xs text-gray-500">{isGroup ? `${friend.members?.length || 0} members` : 'Active now'}</p>
                     </div>
                 </div>
 
                 <div className="relative group">
-                    <button className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-full transition-colors">
+                    <button className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors">
                         <MoreVertical size={20} />
                     </button>
-                    <div className="absolute right-0 top-full mt-2 w-48 bg-gray-900 border border-gray-800 rounded-xl shadow-xl overflow-hidden hidden group-hover:block z-50">
+                    <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-xl overflow-hidden hidden group-hover:block z-50 transition-colors">
                         <button
                             onClick={async () => {
                                 if (window.confirm('Are you sure you want to remove this friend? Chat history will be kept.')) {
@@ -1649,7 +1687,7 @@ function ChatView({ user, profile, friend, onBack }) {
                                     }
                                 }
                             }}
-                            className="w-full px-4 py-3 text-left text-red-400 hover:bg-gray-800 hover:text-red-300 flex items-center gap-2 transition-colors"
+                            className="w-full px-4 py-3 text-left text-red-500 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-red-600 dark:hover:text-red-300 flex items-center gap-2 transition-colors"
                         >
                             <Trash2 size={16} />
                             Remove Friend
@@ -1658,10 +1696,10 @@ function ChatView({ user, profile, friend, onBack }) {
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 bg-[#1a1a1a]" style={{ scrollBehavior: 'smooth' }}>
+            <div className="flex-1 overflow-y-auto p-4 bg-white dark:bg-black transition-colors" style={{ scrollBehavior: 'smooth' }}>
                 {messages.length === 0 ? (
                     <div className="flex items-center justify-center h-full">
-                        <p className="text-gray-600 text-sm">No messages yet. Say hi! 👋</p>
+                        <p className="text-gray-500 dark:text-gray-400 text-sm">No messages yet. Say hi! 👋</p>
                     </div>
                 ) : (
                     <div className="space-y-1">
@@ -1670,7 +1708,7 @@ function ChatView({ user, profile, friend, onBack }) {
                             if (msg.type === 'system') {
                                 return (
                                     <div key={msg.id} className="flex justify-center my-2">
-                                        <p className="text-xs text-gray-500 bg-gray-800/50 px-3 py-1.5 rounded-full">
+                                        <p className="text-xs text-gray-500 bg-gray-100 dark:bg-gray-800/50 px-3 py-1.5 rounded-full">
                                             {msg.text}
                                         </p>
                                     </div>
@@ -1686,11 +1724,11 @@ function ChatView({ user, profile, friend, onBack }) {
                                     {!isMe && (
                                         <div className="w-7 h-7 mb-0.5 flex-shrink-0">
                                             {showAvatar ? (
-                                                <div className="w-7 h-7 rounded-full bg-gray-800 overflow-hidden">
+                                                <div className="w-7 h-7 rounded-full bg-gray-200 dark:bg-gray-800 overflow-hidden">
                                                     {friend.photoURL && !isGroup ? (
                                                         <img src={friend.photoURL} alt={friend.displayName} className="w-full h-full object-cover" />
                                                     ) : (
-                                                        <div className="w-full h-full flex items-center justify-center text-gray-400 font-semibold text-xs">
+                                                        <div className="w-full h-full flex items-center justify-center text-gray-500 dark:text-gray-400 font-semibold text-xs">
                                                             {isGroup ? <Users size={12} /> : (friend.displayName?.[0]?.toUpperCase() || 'U')}
                                                         </div>
                                                     )}
@@ -1710,7 +1748,7 @@ function ChatView({ user, profile, friend, onBack }) {
                                         <div
                                             className={`${isMe
                                                 ? 'bg-blue-600 text-white rounded-2xl rounded-br-md'
-                                                : 'bg-[#3e4042] text-white rounded-2xl rounded-bl-md'
+                                                : 'bg-gray-100 dark:bg-[#3e4042] text-gray-900 dark:text-white rounded-2xl rounded-bl-md'
                                                 } ${msg.type === 'image' ? 'p-1' : 'px-3 py-2'}`}
                                         >
                                             {msg.type === 'image' ? (
@@ -1748,7 +1786,7 @@ function ChatView({ user, profile, friend, onBack }) {
                 )}
             </div>
 
-            <div className="sticky bottom-0 p-3 border-t border-gray-800 bg-[#1a1a1a] shadow-lg">
+            <div className="sticky bottom-0 p-3 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-black shadow-lg transition-colors">
                 <form onSubmit={(e) => { e.preventDefault(); sendMessage(newMessage); }} className="flex items-center gap-2">
                     <input
                         type="file"
@@ -1761,17 +1799,17 @@ function ChatView({ user, profile, friend, onBack }) {
                         type="button"
                         onClick={() => imageInputRef.current?.click()}
                         disabled={uploading}
-                        className="p-2 text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+                        className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors disabled:opacity-50"
                     >
                         {uploading ? <Loader2 size={24} className="animate-spin" /> : <ImageIcon size={24} />}
                     </button>
-                    <div className="flex-1 bg-[#3a3b3c] rounded-full px-4 py-2.5 flex items-center">
+                    <div className="flex-1 bg-gray-100 dark:bg-[#3a3b3c] rounded-full px-4 py-2.5 flex items-center transition-colors">
                         <input
                             type="text"
                             value={newMessage}
                             onChange={(e) => setNewMessage(e.target.value)}
                             placeholder="Message..."
-                            className="flex-1 bg-transparent outline-none text-white placeholder-gray-500"
+                            className="flex-1 bg-transparent outline-none text-gray-900 dark:text-white placeholder-gray-500"
                         />
                     </div>
                     <button
@@ -1779,7 +1817,7 @@ function ChatView({ user, profile, friend, onBack }) {
                         disabled={!newMessage.trim()}
                         className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${newMessage.trim()
                             ? 'bg-blue-600 text-white hover:bg-blue-700'
-                            : 'bg-[#3a3b3c] text-gray-600'
+                            : 'bg-gray-200 dark:bg-[#3a3b3c] text-gray-500 dark:text-gray-600'
                             }`}
                     >
                         <Send size={20} />
