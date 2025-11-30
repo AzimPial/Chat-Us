@@ -1489,6 +1489,7 @@ function ChatView({ user, profile, friend, onBack }) {
     const [showGroupInfo, setShowGroupInfo] = useState(false);
     const [fullScreenImage, setFullScreenImage] = useState(null);
     const [messageSenders, setMessageSenders] = useState({});
+    const [isTyping, setIsTyping] = useState(false);
     const messagesEndRef = useRef(null);
     const chatContainerRef = useRef(null);
     const imageInputRef = useRef(null);
@@ -1497,11 +1498,33 @@ function ChatView({ user, profile, friend, onBack }) {
     const isGroup = friend.type === 'group';
     const isInitialLoad = useRef(true);
     const prevMessageCount = useRef(0);
+    const typingTimeoutRef = useRef(null);
 
     useEffect(() => {
         isInitialLoad.current = true;
         prevMessageCount.current = 0;
+        setIsTyping(false);
     }, [friend.uid, friend.id]);
+
+    // Listen for typing status
+    useEffect(() => {
+        if (isGroup) return; // Skip for groups for now
+
+        const chatId = [user.uid, friend.uid].sort().join('_');
+        const typingRef = doc(db, 'typing', chatId);
+
+        const unsubscribe = onSnapshot(typingRef, (snapshot) => {
+            if (snapshot.exists()) {
+                const data = snapshot.data();
+                const otherUserTyping = data[friend.uid];
+                setIsTyping(otherUserTyping || false);
+            } else {
+                setIsTyping(false);
+            }
+        });
+
+        return unsubscribe;
+    }, [user.uid, friend.uid, isGroup]);
 
     useEffect(() => {
         let q;
@@ -1580,6 +1603,13 @@ function ChatView({ user, profile, friend, onBack }) {
         const messageText = text.trim();
         setNewMessage('');
 
+        // Clear typing indicator when sending
+        if (!isGroup) {
+            const chatId = [user.uid, friend.uid].sort().join('_');
+            const typingRef = doc(db, 'typing', chatId);
+            await setDoc(typingRef, { [user.uid]: false }, { merge: true });
+        }
+
         try {
             const collectionPath = isGroup ? `groups/${friend.id}/messages` : `chats/${[user.uid, friend.uid].sort().join('_')}/messages`;
             await addDoc(collection(db, collectionPath), {
@@ -1612,6 +1642,26 @@ function ChatView({ user, profile, friend, onBack }) {
         } finally {
             setUploading(false);
         }
+    };
+
+    const handleTyping = async () => {
+        if (isGroup) return; // Skip for groups
+
+        const chatId = [user.uid, friend.uid].sort().join('_');
+        const typingRef = doc(db, 'typing', chatId);
+
+        // Set typing to true
+        await setDoc(typingRef, { [user.uid]: true }, { merge: true });
+
+        // Clear existing timeout
+        if (typingTimeoutRef.current) {
+            clearTimeout(typingTimeoutRef.current);
+        }
+
+        // Set timeout to clear typing after 2 seconds of inactivity
+        typingTimeoutRef.current = setTimeout(async () => {
+            await setDoc(typingRef, { [user.uid]: false }, { merge: true });
+        }, 2000);
     };
 
     useEffect(() => {
@@ -1817,6 +1867,18 @@ function ChatView({ user, profile, friend, onBack }) {
                         <div ref={messagesEndRef} />
                     </div>
                 )}
+
+                {/* Typing indicator */}
+                {isTyping && (
+                    <div className="flex items-center gap-2 px-4 py-2">
+                        <div className="flex items-center gap-1">
+                            <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                            <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                            <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                        </div>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">typing...</span>
+                    </div>
+                )}
             </div>
 
             <div className="sticky bottom-0 p-3 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-black shadow-lg transition-colors">
@@ -1846,7 +1908,10 @@ function ChatView({ user, profile, friend, onBack }) {
                             ref={messageInputRef}
                             type="text"
                             value={newMessage}
-                            onChange={(e) => setNewMessage(e.target.value)}
+                            onChange={(e) => {
+                                setNewMessage(e.target.value);
+                                handleTyping();
+                            }}
                             placeholder="Message..."
                             className="flex-1 bg-transparent outline-none text-gray-900 dark:text-white placeholder-gray-500"
                         />
