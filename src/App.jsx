@@ -1489,6 +1489,7 @@ function ChatView({ user, profile, friend, onBack }) {
     const [showGroupInfo, setShowGroupInfo] = useState(false);
     const [fullScreenImage, setFullScreenImage] = useState(null);
     const [messageSenders, setMessageSenders] = useState({});
+    const [isReady, setIsReady] = useState(false);
     const messagesEndRef = useRef(null);
     const chatContainerRef = useRef(null);
     const imageInputRef = useRef(null);
@@ -1501,6 +1502,7 @@ function ChatView({ user, profile, friend, onBack }) {
     useEffect(() => {
         isInitialLoad.current = true;
         prevMessageCount.current = 0;
+        setIsReady(false);
     }, [friend.uid, friend.id]);
 
     useEffect(() => {
@@ -1521,6 +1523,12 @@ function ChatView({ user, profile, friend, onBack }) {
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const newMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setMessages(newMessages);
+
+            // If chat is empty, we are ready immediately
+            if (newMessages.length === 0) {
+                setIsReady(true);
+                isInitialLoad.current = false;
+            }
         });
 
         return unsubscribe;
@@ -1533,6 +1541,7 @@ function ChatView({ user, profile, friend, onBack }) {
                 // Instant scroll on first load - directly set scrollTop
                 chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
                 isInitialLoad.current = false;
+                setIsReady(true);
             } else if (messages.length > prevMessageCount.current) {
                 // Smooth scroll for new messages
                 chatContainerRef.current.scrollTo({
@@ -1729,7 +1738,7 @@ function ChatView({ user, profile, friend, onBack }) {
 
             <div
                 ref={chatContainerRef}
-                className="flex-1 overflow-y-auto p-4 bg-white dark:bg-black transition-colors"
+                className={`flex-1 overflow-y-auto p-4 bg-white dark:bg-black transition-opacity duration-200 ${isReady ? 'opacity-100' : 'opacity-0'}`}
             >
                 {messages.length === 0 ? (
                     <div className="flex items-center justify-center h-full">
