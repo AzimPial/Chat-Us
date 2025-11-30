@@ -46,7 +46,8 @@ import {
     Users,
     Plus,
     Edit2,
-    UserMinus
+    UserMinus,
+    Settings
 } from 'lucide-react';
 
 const Input = ({ value, onChange, placeholder, type = "text", className = "" }) => (
@@ -457,6 +458,8 @@ function ProfileSetup({ user, profile, onSave, onBack }) {
     const [preview, setPreview] = useState(profile?.photoURL || null);
     const [saving, setSaving] = useState(false);
     const [editingName, setEditingName] = useState(!profile?.displayName);
+
+    const [showAddFriend, setShowAddFriend] = useState(false);
     const fileInputRef = useRef(null);
 
     const handleImageChange = (e) => {
@@ -494,6 +497,26 @@ function ProfileSetup({ user, profile, onSave, onBack }) {
             setSaving(false);
         }
     };
+
+
+
+    if (showAddFriend) {
+        return (
+            <div className="min-h-screen bg-black flex items-center justify-center p-4">
+                <div className="w-full max-w-md bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden flex flex-col h-[600px]">
+                    <div className="px-4 py-3 border-b border-gray-800 flex items-center gap-3">
+                        <button onClick={() => setShowAddFriend(false)} className="text-gray-400 hover:text-white">
+                            <ChevronLeft size={24} />
+                        </button>
+                        <h2 className="text-xl font-bold text-white">Add Friend</h2>
+                    </div>
+                    <div className="p-4 overflow-y-auto flex-1">
+                        <FriendSearchCard user={user} />
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-black flex items-center justify-center p-4">
@@ -576,6 +599,22 @@ function ProfileSetup({ user, profile, onSave, onBack }) {
                                 </button>
                             </div>
                         )}
+                    </div>
+
+
+                    <div className="pt-4 border-t border-gray-800">
+                        <button
+                            onClick={() => setShowAddFriend(true)}
+                            className="w-full p-4 bg-gray-800 hover:bg-gray-700 rounded-xl flex items-center justify-between group transition-colors"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:bg-blue-500/20 transition-colors">
+                                    <Plus size={20} />
+                                </div>
+                                <span className="text-white font-medium">Add New Friend</span>
+                            </div>
+                            <ChevronLeft size={20} className="text-gray-500 rotate-180" />
+                        </button>
                     </div>
 
                     {!editingName && image && (
@@ -985,10 +1024,39 @@ function GroupInfoModal({ group, user, profile, onClose, onLeave }) {
     );
 }
 
+function SettingsModal({ onClose, onLogout }) {
+    return (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-gray-900 w-full max-w-md rounded-2xl border border-gray-800 overflow-hidden">
+                <div className="p-4 border-b border-gray-800 flex items-center justify-between">
+                    <h2 className="text-xl font-bold text-white">Settings</h2>
+                    <button onClick={onClose} className="text-gray-400 hover:text-white">
+                        <X size={24} />
+                    </button>
+                </div>
+                <div className="p-4 space-y-4">
+                    <button
+                        onClick={onLogout}
+                        className="w-full p-4 bg-gray-800 hover:bg-gray-700 rounded-xl flex items-center justify-between group transition-colors"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 group-hover:bg-red-500/20 transition-colors">
+                                <LogOut size={20} />
+                            </div>
+                            <span className="text-white font-medium">Log Out</span>
+                        </div>
+                        <ChevronLeft size={20} className="text-gray-500 rotate-180" />
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 function ConversationsList({ friends, user, profile, chatsData, groupChatsData, friendProfiles, groups, onSelectFriend, onOpenProfile, onLogout }) {
     const [searchQuery, setSearchQuery] = useState('');
-    const [showAddFriend, setShowAddFriend] = useState(false);
     const [showCreateGroup, setShowCreateGroup] = useState(false);
+    const [showSettings, setShowSettings] = useState(false);
     const [editingName, setEditingName] = useState(false);
     const [newDisplayName, setNewDisplayName] = useState(profile?.displayName || '');
 
@@ -1028,21 +1096,11 @@ function ConversationsList({ friends, user, profile, chatsData, groupChatsData, 
         return <CreateGroupModal user={user} friends={friendsWithUpdatedData} onClose={() => setShowCreateGroup(false)} />;
     }
 
-    if (showAddFriend) {
-        return (
-            <div className="flex flex-col h-full">
-                <div className="px-4 py-3 border-b border-gray-800 flex items-center gap-3">
-                    <button onClick={() => setShowAddFriend(false)} className="text-gray-400 hover:text-white">
-                        <ChevronLeft size={24} />
-                    </button>
-                    <h2 className="text-xl font-bold text-white">Add Friend</h2>
-                </div>
-                <div className="p-4 overflow-y-auto">
-                    <FriendSearchCard user={user} />
-                </div>
-            </div>
-        );
+    if (showSettings) {
+        return <SettingsModal onClose={() => setShowSettings(false)} onLogout={onLogout} />;
     }
+
+
 
     return (
         <div className="flex flex-col h-full">
@@ -1110,18 +1168,11 @@ function ConversationsList({ friends, user, profile, chatsData, groupChatsData, 
                             <Users size={20} />
                         </button>
                         <button
-                            onClick={() => setShowAddFriend(true)}
+                            onClick={() => setShowSettings(true)}
                             className="p-2 hover:bg-gray-800 rounded-full transition-colors text-gray-400 hover:text-white"
-                            title="Add Friend"
+                            title="Settings"
                         >
-                            <Plus size={20} />
-                        </button>
-                        <button
-                            onClick={onLogout}
-                            className="p-2 hover:bg-gray-800 rounded-full transition-colors text-gray-400 hover:text-red-400"
-                            title="Logout"
-                        >
-                            <LogOut size={20} />
+                            <Settings size={20} />
                         </button>
                     </div>
                 </div>
