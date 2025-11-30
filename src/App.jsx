@@ -58,7 +58,7 @@ const Input = ({ value, onChange, placeholder, type = "text", className = "" }) 
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className={`w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors ${className}`}
+        className={`w-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors ${className}`}
     />
 );
 
@@ -603,7 +603,7 @@ function ProfileSetup({ user, profile, onSave, onBack }) {
                                                 setName(profile.displayName);
                                                 setEditingName(false);
                                             }}
-                                            className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-medium transition-colors"
+                                            className="px-4 py-2 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-900 dark:text-white rounded-xl font-medium transition-colors"
                                         >
                                             Cancel
                                         </button>
@@ -713,7 +713,7 @@ function CreateGroupModal({ user, friends, onClose }) {
                                     onClick={() => toggleMember(friend.uid)}
                                     className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${selectedMembers.includes(friend.uid)
                                         ? 'bg-blue-600/20 border-blue-600'
-                                        : 'bg-gray-800 border-gray-700 hover:border-gray-600'
+                                        : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                                         }`}
                                 >
                                     <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${selectedMembers.includes(friend.uid)
