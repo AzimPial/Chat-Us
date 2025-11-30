@@ -1721,7 +1721,7 @@ function ChatView({ user, profile, friend, onBack }) {
                 />
             )}
 
-            <div className="sticky top-0 z-10 px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-black flex items-center justify-between shadow-lg transition-colors">
+            <div className="fixed top-0 left-0 right-0 z-10 px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-black flex items-center justify-between shadow-lg transition-colors">
                 <div className="flex items-center gap-3">
                     <button
                         onClick={onBack}
@@ -1778,7 +1778,7 @@ function ChatView({ user, profile, friend, onBack }) {
 
             <div
                 ref={chatContainerRef}
-                className="flex-1 overflow-y-auto p-4 bg-white dark:bg-black transition-colors"
+                className="flex-1 overflow-y-auto p-4 pt-20 bg-white dark:bg-black transition-colors"
             >
                 {messages.length === 0 ? (
                     <div className="flex items-center justify-center h-full">
@@ -1833,6 +1833,7 @@ function ChatView({ user, profile, friend, onBack }) {
                                                 ? 'bg-blue-600 text-white rounded-2xl rounded-br-md'
                                                 : 'bg-gray-100 dark:bg-[#3e4042] text-gray-900 dark:text-white rounded-2xl rounded-bl-md'
                                                 } ${msg.type === 'image' ? 'p-1' : 'px-3 py-2'}`}
+                                            style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
                                         >
                                             {msg.type === 'image' ? (
                                                 <div
@@ -1846,7 +1847,7 @@ function ChatView({ user, profile, friend, onBack }) {
                                                     />
                                                 </div>
                                             ) : (
-                                                <p className="text-[15px] leading-snug break-words whitespace-pre-wrap word-break">
+                                                <p className="text-[15px] leading-snug">
                                                     {msg.text}
                                                 </p>
                                             )}
