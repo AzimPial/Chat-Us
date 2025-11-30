@@ -1493,6 +1493,13 @@ function ChatView({ user, profile, friend, onBack }) {
     const imageInputRef = useRef(null);
 
     const isGroup = friend.type === 'group';
+    const isInitialLoad = useRef(true);
+    const prevMessageCount = useRef(0);
+
+    useEffect(() => {
+        isInitialLoad.current = true;
+        prevMessageCount.current = 0;
+    }, [friend.uid, friend.id]);
 
     useEffect(() => {
         let q;
@@ -1510,8 +1517,21 @@ function ChatView({ user, profile, friend, onBack }) {
         }
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            setMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-            setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+            const newMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setMessages(newMessages);
+
+            // Smart scroll behavior
+            if (isInitialLoad.current) {
+                // First load: instant scroll to bottom
+                setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "auto" }), 50);
+                isInitialLoad.current = false;
+                prevMessageCount.current = newMessages.length;
+            } else if (newMessages.length > prevMessageCount.current) {
+                // New message added: smooth scroll to bottom
+                setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+                prevMessageCount.current = newMessages.length;
+            }
+            // If message count is same or decreased (edit/delete), don't scroll
         });
 
         return unsubscribe;
