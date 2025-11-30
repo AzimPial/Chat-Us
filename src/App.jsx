@@ -1483,6 +1483,19 @@ function FriendSearchCard({ user }) {
 }
 
 function ChatView({ user, profile, friend, onBack }) {
+    const [messages, setMessages] = useState([]);
+    const [newMessage, setNewMessage] = useState('');
+    const [uploading, setUploading] = useState(false);
+    const [showGroupInfo, setShowGroupInfo] = useState(false);
+    const [fullScreenImage, setFullScreenImage] = useState(null);
+    const [messageSenders, setMessageSenders] = useState({});
+    const messagesEndRef = useRef(null);
+    const chatContainerRef = useRef(null);
+    const imageInputRef = useRef(null);
+    const messageInputRef = useRef(null);
+
+    const isGroup = friend.type === 'group';
+    const isInitialLoad = useRef(true);
     const prevMessageCount = useRef(0);
 
     useEffect(() => {
