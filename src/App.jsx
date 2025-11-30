@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useLayoutEffect } from 'react';
 import {
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
@@ -1483,18 +1483,6 @@ function FriendSearchCard({ user }) {
 }
 
 function ChatView({ user, profile, friend, onBack }) {
-    const [messages, setMessages] = useState([]);
-    const [newMessage, setNewMessage] = useState('');
-    const [uploading, setUploading] = useState(false);
-    const [showGroupInfo, setShowGroupInfo] = useState(false);
-    const [fullScreenImage, setFullScreenImage] = useState(null);
-    const [messageSenders, setMessageSenders] = useState({});
-    const messagesEndRef = useRef(null);
-    const imageInputRef = useRef(null);
-    const messageInputRef = useRef(null);
-
-    const isGroup = friend.type === 'group';
-    const isInitialLoad = useRef(true);
     const prevMessageCount = useRef(0);
 
     useEffect(() => {
@@ -1520,27 +1508,28 @@ function ChatView({ user, profile, friend, onBack }) {
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const newMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setMessages(newMessages);
-
-            // Smart scroll behavior - no delays to prevent jump
-            if (isInitialLoad.current) {
-                // First load: instant scroll to bottom, use requestAnimationFrame for smooth rendering
-                requestAnimationFrame(() => {
-                    messagesEndRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
-                });
-                isInitialLoad.current = false;
-                prevMessageCount.current = newMessages.length;
-            } else if (newMessages.length > prevMessageCount.current) {
-                // New message added: smooth scroll to bottom
-                requestAnimationFrame(() => {
-                    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-                });
-                prevMessageCount.current = newMessages.length;
-            }
-            // If message count is same or decreased (edit/delete), don't scroll
         });
 
         return unsubscribe;
     }, [user, friend, isGroup]);
+
+    // Separate effect for scrolling
+    useLayoutEffect(() => {
+        if (messages.length > 0 && chatContainerRef.current) {
+            if (isInitialLoad.current) {
+                // Instant scroll on first load - directly set scrollTop
+                chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+                isInitialLoad.current = false;
+            } else if (messages.length > prevMessageCount.current) {
+                // Smooth scroll for new messages
+                chatContainerRef.current.scrollTo({
+                    top: chatContainerRef.current.scrollHeight,
+                    behavior: 'smooth'
+                });
+            }
+            prevMessageCount.current = messages.length;
+        }
+    }, [messages]);
 
     // Fetch sender profiles for group messages - optimized to only fetch new senders
     useEffect(() => {
@@ -1725,7 +1714,10 @@ function ChatView({ user, profile, friend, onBack }) {
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 bg-white dark:bg-black transition-colors" style={{ scrollBehavior: 'smooth' }}>
+            <div
+                ref={chatContainerRef}
+                className="flex-1 overflow-y-auto p-4 bg-white dark:bg-black transition-colors"
+            >
                 {messages.length === 0 ? (
                     <div className="flex items-center justify-center h-full">
                         <p className="text-gray-500 dark:text-gray-400 text-sm">No messages yet. Say hi! 👋</p>
@@ -1820,8 +1812,6 @@ function ChatView({ user, profile, friend, onBack }) {
                     e.preventDefault();
                     if (newMessage.trim()) {
                         sendMessage(newMessage);
-                        // Keep input focused for iOS
-                        e.target.querySelector('input')?.focus();
                     }
                 }} className="flex items-center gap-2">
                     <input
