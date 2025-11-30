@@ -1688,7 +1688,7 @@ function ChatView({ user, profile, friend, onBack }) {
     }, [messages, user, friend, isGroup]);
 
     return (
-        <div className="flex-1 flex flex-col bg-white dark:bg-black h-full relative transition-colors">
+        <div className="flex-1 flex flex-col bg-white dark:bg-black min-h-full relative transition-colors">
             {fullScreenImage && (
                 <div
                     className="absolute inset-0 z-50 bg-black/95 flex items-center justify-center p-4"
@@ -1822,7 +1822,7 @@ function ChatView({ user, profile, friend, onBack }) {
                                         </div>
                                     )}
 
-                                    <div className="flex flex-col items-end max-w-[70%]">
+                                    <div className="flex flex-col items-end max-w-[65%]">
                                         {isGroup && !isMe && showAvatar && (
                                             <span className="text-[10px] text-gray-500 mr-auto ml-1 mb-0.5">
                                                 {messageSenders[msg.senderId]?.displayName || msg.senderName || 'Unknown'}
@@ -1846,7 +1846,7 @@ function ChatView({ user, profile, friend, onBack }) {
                                                     />
                                                 </div>
                                             ) : (
-                                                <p className="text-[15px] leading-snug break-words whitespace-pre-wrap">
+                                                <p className="text-[15px] leading-snug break-words whitespace-pre-wrap word-break">
                                                     {msg.text}
                                                 </p>
                                             )}
