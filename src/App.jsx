@@ -1501,6 +1501,10 @@ function ChatView({ user, profile, friend, onBack }) {
     useEffect(() => {
         isInitialLoad.current = true;
         prevMessageCount.current = 0;
+        // Pre-position scroll to bottom before messages load
+        if (chatContainerRef.current) {
+            chatContainerRef.current.scrollTop = 999999;
+        }
     }, [friend.uid, friend.id]);
 
     useEffect(() => {
@@ -1522,7 +1526,7 @@ function ChatView({ user, profile, friend, onBack }) {
             const newMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setMessages(newMessages);
 
-            // If chat is empty, we are ready immediately
+            // If chat is empty, mark as loaded
             if (newMessages.length === 0) {
                 isInitialLoad.current = false;
             }
@@ -1535,8 +1539,7 @@ function ChatView({ user, profile, friend, onBack }) {
     useLayoutEffect(() => {
         if (messages.length > 0 && messagesEndRef.current) {
             if (isInitialLoad.current) {
-                // Instant scroll on first load - use scrollIntoView with block end
-                messagesEndRef.current.scrollIntoView({ block: 'end' });
+                // First load - scroll is already at bottom from pre-positioning
                 isInitialLoad.current = false;
             } else if (messages.length > prevMessageCount.current) {
                 // Smooth scroll for new messages
