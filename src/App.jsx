@@ -1491,6 +1491,7 @@ function ChatView({ user, profile, friend, onBack }) {
     const [messageSenders, setMessageSenders] = useState({});
     const messagesEndRef = useRef(null);
     const imageInputRef = useRef(null);
+    const messageInputRef = useRef(null);
 
     const isGroup = friend.type === 'group';
     const isInitialLoad = useRef(true);
@@ -1537,19 +1538,18 @@ function ChatView({ user, profile, friend, onBack }) {
         return unsubscribe;
     }, [user, friend, isGroup]);
 
-    // Fetch sender profiles for group messages
+    // Fetch sender profiles for group messages - optimized to only fetch new senders
     useEffect(() => {
         if (!isGroup || !messages.length) return;
 
         const fetchSenders = async () => {
             const senderIds = [...new Set(messages.map(m => m.senderId).filter(Boolean))];
-            const senderData = {};
+            const newSenderIds = senderIds.filter(uid => !messageSenders[uid]);
 
-            for (const uid of senderIds) {
-                if (messageSenders[uid]) {
-                    senderData[uid] = messageSenders[uid];
-                    continue;
-                }
+            if (newSenderIds.length === 0) return; // No new senders to fetch
+
+            const senderData = {};
+            for (const uid of newSenderIds) {
                 try {
                     const userDoc = await getDoc(doc(db, 'users', uid));
                     if (userDoc.exists()) {
@@ -1560,22 +1560,28 @@ function ChatView({ user, profile, friend, onBack }) {
                 }
             }
 
-            setMessageSenders(prev => ({ ...prev, ...senderData }));
+            if (Object.keys(senderData).length > 0) {
+                setMessageSenders(prev => ({ ...prev, ...senderData }));
+            }
         };
 
         fetchSenders();
-    }, [messages, isGroup]);
+    }, [messages.length, isGroup]); // Only re-run when message count changes, not on every message update
 
     const sendMessage = async (text = '', imageUrl = null) => {
         if (!text.trim() && !imageUrl) return;
 
         const chatId = [user.uid, friend.uid].sort().join('_');
+        const messageText = text.trim();
         setNewMessage('');
+
+        // Keep focus on input to prevent keyboard from closing
+        setTimeout(() => messageInputRef.current?.focus(), 50);
 
         try {
             const collectionPath = isGroup ? `groups/${friend.id}/messages` : `chats/${[user.uid, friend.uid].sort().join('_')}/messages`;
             await addDoc(collection(db, collectionPath), {
-                text: text.trim(),
+                text: messageText,
                 imageUrl,
                 type: imageUrl ? 'image' : 'text',
                 senderId: user.uid,
@@ -1827,6 +1833,7 @@ function ChatView({ user, profile, friend, onBack }) {
                     </button>
                     <div className="flex-1 bg-gray-100 dark:bg-[#3a3b3c] rounded-full px-4 py-2.5 flex items-center transition-colors">
                         <input
+                            ref={messageInputRef}
                             type="text"
                             value={newMessage}
                             onChange={(e) => setNewMessage(e.target.value)}
