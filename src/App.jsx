@@ -1822,7 +1822,7 @@ function ChatView({ user, profile, friend, onBack }) {
                                         </div>
                                     )}
 
-                                    <div className="flex flex-col items-end max-w-[65%]">
+                                    <div className="flex flex-col items-end max-w-[75%]">
                                         {isGroup && !isMe && showAvatar && (
                                             <span className="text-[10px] text-gray-500 mr-auto ml-1 mb-0.5">
                                                 {messageSenders[msg.senderId]?.displayName || msg.senderName || 'Unknown'}
