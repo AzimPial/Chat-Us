@@ -1521,15 +1521,19 @@ function ChatView({ user, profile, friend, onBack }) {
             const newMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setMessages(newMessages);
 
-            // Smart scroll behavior
+            // Smart scroll behavior - no delays to prevent jump
             if (isInitialLoad.current) {
-                // First load: instant scroll to bottom
-                setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "auto" }), 50);
+                // First load: instant scroll to bottom, use requestAnimationFrame for smooth rendering
+                requestAnimationFrame(() => {
+                    messagesEndRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
+                });
                 isInitialLoad.current = false;
                 prevMessageCount.current = newMessages.length;
             } else if (newMessages.length > prevMessageCount.current) {
                 // New message added: smooth scroll to bottom
-                setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+                requestAnimationFrame(() => {
+                    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+                });
                 prevMessageCount.current = newMessages.length;
             }
             // If message count is same or decreased (edit/delete), don't scroll
@@ -1574,9 +1578,6 @@ function ChatView({ user, profile, friend, onBack }) {
         const chatId = [user.uid, friend.uid].sort().join('_');
         const messageText = text.trim();
         setNewMessage('');
-
-        // Keep focus on input to prevent keyboard from closing
-        setTimeout(() => messageInputRef.current?.focus(), 50);
 
         try {
             const collectionPath = isGroup ? `groups/${friend.id}/messages` : `chats/${[user.uid, friend.uid].sort().join('_')}/messages`;
@@ -1815,7 +1816,14 @@ function ChatView({ user, profile, friend, onBack }) {
             </div>
 
             <div className="sticky bottom-0 p-3 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-black shadow-lg transition-colors">
-                <form onSubmit={(e) => { e.preventDefault(); sendMessage(newMessage); }} className="flex items-center gap-2">
+                <form onSubmit={(e) => {
+                    e.preventDefault();
+                    if (newMessage.trim()) {
+                        sendMessage(newMessage);
+                        // Keep input focused for iOS
+                        e.target.querySelector('input')?.focus();
+                    }
+                }} className="flex items-center gap-2">
                     <input
                         type="file"
                         ref={imageInputRef}
