@@ -484,6 +484,7 @@ function ProfileSetup({ user, profile, onSave, onBack }) {
     const [editingName, setEditingName] = useState(!profile?.displayName);
 
     const [showAddFriend, setShowAddFriend] = useState(false);
+    const [showRequests, setShowRequests] = useState(false);
     const fileInputRef = useRef(null);
 
     const handleImageChange = (e) => {
@@ -639,12 +640,148 @@ function ProfileSetup({ user, profile, onSave, onBack }) {
                             </div>
                             <ChevronLeft size={20} className="text-gray-500 rotate-180" />
                         </button>
+
+                        <button
+                            onClick={() => setShowRequests(true)}
+                            className="w-full p-4 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl flex items-center justify-between group transition-colors relative"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-500 group-hover:bg-purple-500/20 transition-colors">
+                                    <UserPlus size={20} />
+                                </div>
+                                <span className="text-gray-900 dark:text-white font-medium">Friend Requests</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {/* Badge will be added here */}
+                                <ChevronLeft size={20} className="text-gray-500 rotate-180" />
+                            </div>
+                        </button>
                     </div>
 
                     {!editingName && image && (
                         <Button onClick={handleSave} disabled={saving}>
                             {saving ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Save Photo'}
                         </Button>
+                    )}
+                </div>
+            </div>
+
+            {showRequests && (
+                <FriendRequestsModal
+                    user={user}
+                    onClose={() => setShowRequests(false)}
+                />
+            )}
+        </div>
+    );
+}
+
+function FriendRequestsModal({ user, onClose }) {
+    const [requests, setRequests] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchRequests = async () => {
+            try {
+                const requestsSnapshot = await getDocs(collection(db, 'users', user.uid, 'friend_requests'));
+                const requestsData = requestsSnapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                setRequests(requestsData);
+            } catch (error) {
+                console.error("Error fetching requests:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchRequests();
+    }, [user.uid]);
+
+    const handleRequest = async (req, accept) => {
+        try {
+            if (accept) {
+                const myProfile = await getDoc(doc(db, 'users', user.uid));
+
+                await setDoc(doc(db, 'users', user.uid, 'friends', req.fromUid), {
+                    uid: req.fromUid,
+                    displayName: req.fromName,
+                    photoURL: req.fromPhoto,
+                    addedAt: serverTimestamp()
+                });
+
+                await setDoc(doc(db, 'users', req.fromUid, 'friends', user.uid), {
+                    uid: user.uid,
+                    displayName: myProfile.data()?.displayName || 'Unknown',
+                    photoURL: myProfile.data()?.photoURL || null,
+                    addedAt: serverTimestamp()
+                });
+            }
+
+            await deleteDoc(doc(db, 'users', user.uid, 'friend_requests', req.id));
+            setRequests(prev => prev.filter(r => r.id !== req.id));
+        } catch (err) {
+            console.error("Error handling request:", err);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+            <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden flex flex-col max-h-[600px]">
+                <div className="sticky top-0 z-10 px-6 py-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex items-center justify-between">
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Friend Requests</h2>
+                    <button
+                        onClick={onClose}
+                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+                    >
+                        <X size={24} className="text-gray-500 dark:text-gray-400" />
+                    </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-6">
+                    {loading ? (
+                        <div className="flex items-center justify-center py-12">
+                            <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                        </div>
+                    ) : requests.length === 0 ? (
+                        <div className="text-center py-12">
+                            <UserPlus size={48} className="mx-auto text-gray-400 mb-3" />
+                            <p className="text-gray-500 dark:text-gray-400">No pending requests</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {requests.map(req => (
+                                <div key={req.id} className="flex items-center justify-between p-4 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                                            {req.fromPhoto ? (
+                                                <img src={req.fromPhoto} alt={req.fromName} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-gray-500 dark:text-gray-400 font-semibold text-lg">
+                                                    {req.fromName?.[0]?.toUpperCase() || 'U'}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <span className="font-medium text-gray-900 dark:text-white">{req.fromName || 'Unknown User'}</span>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => handleRequest(req, true)}
+                                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white text-sm font-medium transition-colors"
+                                        >
+                                            Accept
+                                        </button>
+                                        <button
+                                            onClick={() => handleRequest(req, false)}
+                                            className="px-4 py-2 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 rounded-lg text-gray-900 dark:text-gray-200 text-sm font-medium transition-colors"
+                                        >
+                                            Reject
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     )}
                 </div>
             </div>
@@ -1429,44 +1566,6 @@ function FriendSearchCard({ user }) {
                     </div>
                 )}
             </div>
-
-            {requests.length > 0 && (
-                <div className="space-y-3">
-                    <h3 className="font-semibold text-white px-1">Friend Requests</h3>
-                    <div className="space-y-2">
-                        {requests.map(req => (
-                            <div key={req.id} className="flex items-center justify-between p-3 bg-gray-900 border border-gray-800 rounded-xl">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-gray-800 overflow-hidden">
-                                        {req.fromPhoto ? (
-                                            <img src={req.fromPhoto} alt={req.fromName} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center text-gray-400 font-semibold">
-                                                {req.fromName?.[0]?.toUpperCase() || 'U'}
-                                            </div>
-                                        )}
-                                    </div>
-                                    <span className="font-medium text-white">{req.fromName || 'Unknown User'}</span>
-                                </div>
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => handleRequest(req, true)}
-                                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-white text-sm font-medium transition-colors"
-                                    >
-                                        Accept
-                                    </button>
-                                    <button
-                                        onClick={() => handleRequest(req, false)}
-                                        className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-gray-300 text-sm font-medium transition-colors"
-                                    >
-                                        Reject
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
 
             <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800 space-y-2">
                 <h3 className="font-semibold text-white">Your Friend Code</h3>
