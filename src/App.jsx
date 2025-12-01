@@ -45,6 +45,7 @@ import {
     Trash2,
     Users,
     Plus,
+    UserPlus,
     Edit2,
     UserMinus,
     Settings,
