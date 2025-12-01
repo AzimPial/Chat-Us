@@ -1721,7 +1721,7 @@ function ChatView({ user, profile, friend, onBack }) {
                 />
             )}
 
-            <div className="fixed top-0 left-0 right-0 z-10 px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-black flex items-center justify-between shadow-lg transition-colors">
+            <div className="fixed top-0 left-0 right-0 z-50 px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-black flex items-center justify-between shadow-lg transition-colors">
                 <div className="flex items-center gap-3">
                     <button
                         onClick={onBack}
